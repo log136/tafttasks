@@ -1,7 +1,7 @@
 // Fetches a Canvas iCal feed server-side to avoid CORS restrictions.
 // Only allows URLs from instructure.com calendar feeds.
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',

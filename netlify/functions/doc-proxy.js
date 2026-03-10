@@ -1,7 +1,7 @@
 // Fetches a public Google Doc as plain text to avoid CORS.
 // Only accepts Google Doc IDs (alphanumeric + hyphens/underscores).
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',

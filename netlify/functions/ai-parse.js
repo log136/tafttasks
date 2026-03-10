@@ -23,22 +23,22 @@ export const handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: '' };
   }
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: CORS, body: 'Method not allowed' };
+    return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   let docText;
   try {
-    ({ docText } = JSON.parse(event.body));
+    ({ docText } = JSON.parse(event.body ?? '{}'));
   } catch {
-    return { statusCode: 400, headers: CORS, body: 'Invalid JSON body' };
+    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON body' }) };
   }
   if (!docText || typeof docText !== 'string') {
-    return { statusCode: 400, headers: CORS, body: 'Missing docText' };
+    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing docText' }) };
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return { statusCode: 500, headers: CORS, body: 'ANTHROPIC_API_KEY not set' };
+    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set' }) };
   }
 
   const prompt = `You are extracting assignments from a class handout. Return ONLY valid JSON with this exact shape:
@@ -83,6 +83,7 @@ ${docText.slice(0, 8000)}`;
       body: JSON.stringify({ assignments }),
     };
   } catch (err) {
-    return { statusCode: 500, headers: CORS, body: err.message };
+    console.error('ai-parse error:', err);
+    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'AI parsing failed. Please try again.' }) };
   }
 };
