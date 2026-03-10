@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           width: 300px; padding: 20px; background: #f0f2f5; color: #1a1a2e; }
+    h1 { font-size: 1.1rem; font-weight: 800; color: #8B0000; margin-bottom: 4px; }
+    .sub { font-size: 0.75rem; color: #6b7280; margin-bottom: 16px; }
+    .card { background: white; border-radius: 10px; padding: 14px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 4px; }
+    .field input { width: 100%; padding: 7px 10px; border: 1.5px solid #e5e7eb;
+                   border-radius: 6px; font-size: 0.85rem; outline: none; }
+    .field input:focus { border-color: #8B0000; }
+    .btn { width: 100%; padding: 10px; background: #8B0000; color: white;
+           border: none; border-radius: 7px; font-size: 0.9rem; font-weight: 700;
+           cursor: pointer; margin-top: 4px; transition: background 0.15s; }
+    .btn:hover:not(:disabled) { background: #a52020; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn.secondary { background: #065f46; }
+    .btn.secondary:hover:not(:disabled) { background: #047857; }
+    .found { font-size: 0.85rem; margin-bottom: 12px; line-height: 1.5; }
+    .found strong { color: #8B0000; }
+    .status { font-size: 0.78rem; color: #1d4ed8; margin-top: 8px; min-height: 18px; }
+    .error { color: #dc2626; }
+    .user-line { font-size: 0.72rem; color: #6b7280; margin-top: 10px; text-align: center; }
+    .not-canvas { font-size: 0.85rem; color: #6b7280; text-align: center;
+                  padding: 8px 0; line-height: 1.5; }
+    #loginSection, #importSection, #notCanvasSection { display: none; }
+  </style>
+</head>
+<body>
+  <h1>📚 Taft Dashboard</h1>
+  <p class="sub">Canvas Assignment Importer</p>
+
+  <!-- Login -->
+  <div id="loginSection" class="card">
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="you@taftschool.edu">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPassword">
+    </div>
+    <button class="btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="status" id="loginStatus"></div>
+  </div>
+
+  <!-- Import -->
+  <div id="importSection" class="card">
+    <div class="found" id="foundSummary"></div>
+    <button class="btn secondary" id="importBtn" onclick="doImport()">Import to Dashboard</button>
+    <div class="status" id="importStatus"></div>
+    <div class="user-line" id="userLine"></div>
+  </div>
+
+  <!-- Not on Canvas -->
+  <div id="notCanvasSection" class="card">
+    <p class="not-canvas">
+      Navigate to a Canvas <strong>module</strong> or <strong>checklist</strong> page to import assignments.
+    </p>
+    <div class="user-line" id="userLine2"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
