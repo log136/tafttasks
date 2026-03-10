@@ -9,8 +9,6 @@ let pageData = null; // { assignments, googleDocIds } from content script
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded', async () => {
-  // Load Supabase SDK
-  await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Restore session from chrome.storage
@@ -33,13 +31,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   render();
 });
 
-function loadScript(src) {
-  return new Promise((resolve) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = resolve;
-    document.head.appendChild(s);
-  });
-}
 
 function render() {
   const loggedIn = !!currentUser;
@@ -132,7 +123,8 @@ async function doImport() {
         done: false,
         sort_order: i,
       }));
-      await sb.from('assignments').insert(rows);
+      const { error: insertError } = await sb.from('assignments').insert(rows);
+      if (insertError) throw new Error('Assignment insert failed: ' + insertError.message);
       saved += rows.length;
     }
 

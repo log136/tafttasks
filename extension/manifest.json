@@ -3,7 +3,7 @@
   "name": "Taft Dashboard Importer",
   "version": "1.0.0",
   "description": "Import Canvas assignments into your Taft Assignment Dashboard.",
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": ["*://*.instructure.com/*"],
   "content_scripts": [
     {
