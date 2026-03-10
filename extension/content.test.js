@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { JSDOM } from 'jsdom';
 import { extractAssignments } from './content.js';
 
 const CANVAS_MODULE_HTML = `
@@ -28,34 +29,30 @@ const CANVAS_MODULE_HTML = `
   </div>
 </div>`;
 
-function mockDoc(html) {
-  const items = [];
-  const rowRegex = /data-module-type="([^"]+)"[\s\S]*?class="ig-title"[\s\S]*?href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?class="ig-details">([\s\S]*?)(?=<\/div>\s*<\/div>)/g;
-  let m;
-  while ((m = rowRegex.exec(html)) !== null) {
-    items.push({ type: m[1], href: m[2], name: m[3].trim(), detailsHtml: m[4] });
-  }
-  return items;
+function makeDoc(html) {
+  return new JSDOM(html).window.document;
 }
 
-test('extracts assignment name, url, and canvas IDs', () => {
-  const items = mockDoc(CANVAS_MODULE_HTML);
-  assert.equal(items.length, 3);
-  assert.equal(items[0].name, 'Problem Set 3');
-  assert.equal(items[0].href, '/courses/123/assignments/456');
-  assert.equal(items[0].type, 'Assignment');
+test('extracts assignment name, url, type, and canvas IDs', () => {
+  const { assignments } = extractAssignments(makeDoc(CANVAS_MODULE_HTML));
+  assert.equal(assignments.length, 2); // Google Doc row excluded
+  assert.equal(assignments[0].name, 'Problem Set 3');
+  assert.equal(assignments[0].canvasCourseId, 123);
+  assert.equal(assignments[0].canvasAssignmentId, 456);
+  assert.equal(assignments[0].type, 'homework');
+  assert.equal(assignments[1].type, 'quiz');
 });
 
-test('detects Google Doc links', () => {
-  const items = mockDoc(CANVAS_MODULE_HTML);
-  const gDocs = items.filter(i => i.href.includes('docs.google.com'));
-  assert.equal(gDocs.length, 1);
-  assert.match(gDocs[0].href, /ABC123/);
+test('separates Google Doc links into googleDocIds', () => {
+  const { assignments, googleDocIds } = extractAssignments(makeDoc(CANVAS_MODULE_HTML));
+  assert.equal(googleDocIds.length, 1);
+  assert.equal(googleDocIds[0], 'ABC123');
+  assert.equal(assignments.length, 2); // Google Doc not in assignments
 });
 
-test('extracts canvas course and assignment IDs from URL', () => {
-  const url = '/courses/123/assignments/456';
-  const m = url.match(/\/courses\/(\d+)\/assignments\/(\d+)/);
-  assert.equal(m[1], '123');
-  assert.equal(m[2], '456');
+test('parseDue handles Canvas date format', () => {
+  const { assignments } = extractAssignments(makeDoc(CANVAS_MODULE_HTML));
+  // "Jan 15 at 11:59pm" should parse to a date string, not null
+  assert.ok(assignments[0].due !== null, 'due date should not be null');
+  assert.match(assignments[0].due, /^\d{4}-\d{2}-\d{2}$/);
 });

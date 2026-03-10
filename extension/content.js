@@ -19,7 +19,8 @@ export function extractAssignments(doc) {
 
     const name = anchor.textContent.trim();
     const href = anchor.getAttribute('href') || '';
-    const fullUrl = href.startsWith('http') ? href : 'https://taftschool.instructure.com' + href;
+    const origin = typeof location !== 'undefined' ? location.origin : 'https://taftschool.instructure.com';
+    const fullUrl = href.startsWith('http') ? href : origin + href;
 
     // Detect Google Doc links
     const gdocMatch = fullUrl.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
@@ -60,20 +61,14 @@ function mapType(canvasType) {
 
 function parseDue(text) {
   if (!text) return null;
-  const d = new Date(text);
+  // Canvas appends "at HH:MMam/pm" which Date cannot parse
+  const cleaned = text.replace(/\s+at\s+\d+:\d+\s*[ap]m/i, '').trim();
+  const d = new Date(cleaned);
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 }
 
 // ── Runtime: runs in actual Chrome extension context ──
 if (typeof chrome !== 'undefined' && chrome.runtime) {
-  // Send initial scan to background on page load
-  const result = extractAssignments(document);
-  const total = result.assignments.length + result.googleDocIds.length;
-  if (total > 0) {
-    chrome.action.setBadgeText({ text: String(total) }).catch(() => {});
-  }
-
-  // Respond to popup requesting page data
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'GET_PAGE_DATA') {
       sendResponse(extractAssignments(document));
