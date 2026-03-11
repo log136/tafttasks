@@ -1,7 +1,7 @@
 // Supabase loaded from CDN inline — inject it dynamically
 const SUPABASE_URL = 'https://pupqkuunekeeyfnfjpde.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1cHFrdXVuZWtlZXlmbmZqcGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTM2NzEsImV4cCI6MjA4ODU4OTY3MX0.ktUUhaqi3BO5wAr8kWaTqvoQ1fxRlitvD9hpIUXOUdU';
-const CF_BASE = 'https://taft-dashboard.pages.dev';
+const CF_BASE = 'https://tafttasks.pages.dev';
 
 let sb = null;
 let currentUser = null;
