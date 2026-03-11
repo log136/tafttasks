@@ -645,6 +645,9 @@ async function signOut() {
 //  DATA LOADING
 // ─────────────────────────────────────────────
 async function loadUserData() {
+  // Load global/schedule data unconditionally (works for all users, even new ones)
+  await Promise.all([loadScheduleOverrides(), loadAppSettings(), loadBlockAssignments()]);
+
   const { data: coursesData, error } = await sb
     .from('courses')
     .select('*')
@@ -700,6 +703,26 @@ async function loadUserData() {
   (assignmentsData || []).forEach(a => { if (a.done) state.done[a.id] = true; });
 
   return true;
+}
+
+async function loadBlockAssignments() {
+  const { data } = await sb.from('block_schedule')
+    .select('block, course_id')
+    .eq('user_id', currentUser.id);
+  BLOCK_SCHEDULE = {};
+  (data || []).forEach(row => { BLOCK_SCHEDULE[row.block] = row.course_id; });
+}
+
+async function loadScheduleOverrides() {
+  const { data } = await sb.from('schedule_overrides').select('*');
+  SCHEDULE_OVERRIDES = {};
+  (data || []).forEach(row => { SCHEDULE_OVERRIDES[row.date] = { label: row.label, entries: row.entries }; });
+}
+
+async function loadAppSettings() {
+  const { data } = await sb.from('app_settings').select('*');
+  APP_SETTINGS = {};
+  (data || []).forEach(row => { APP_SETTINGS[row.key] = row.value; });
 }
 
 // ─────────────────────────────────────────────
