@@ -509,8 +509,78 @@ let state = { done: {} };
 let currentFilter = 'all';
 let wizardCourses = [];
 let authMode = 'signin';
+let BLOCK_SCHEDULE = {};      // { A: course_id|null, … }
+let SCHEDULE_OVERRIDES = {};  // { 'YYYY-MM-DD': { label, entries } }
+let APP_SETTINGS = {};        // { key: value }
+let schedViewDate = new Date();
+if (schedViewDate.getDay() === 0) schedViewDate.setDate(schedViewDate.getDate() + 1);
+let schedEditMode = false;
 
 const PRESET_COLORS = ['#c0392b','#7c3aed','#1d4ed8','#b45309','#065f46','#0e7490','#be185d','#374151'];
+
+// ─────────────────────────────────────────────
+//  ADMIN + SCHEDULE CONSTANTS
+// ─────────────────────────────────────────────
+const ADMIN_USER_ID = '79106bc2-d81a-4817-9332-7b6157541497';
+
+const BLOCK_COLORS = {
+  A: '#e6a817', B: '#e87c7c', C: '#7c9de8',
+  D: '#9b5de5', E: '#4caf6a', F: '#4f9ca8', G: '#a8c84f',
+};
+
+const TAFT_SCHEDULE = {
+  monday: [
+    { type: 'block',   block: 'A', label: null,                start: '8:15 am',  end: '9:15 am'  },
+    { type: 'block',   block: 'C', label: null,                start: '9:20 am',  end: '10:05 am' },
+    { type: 'block',   block: 'B', label: null,                start: '10:10 am', end: '11:25 am' },
+    { type: 'special', block: null, label: 'Community Lunch',  start: '11:30 am', end: '12:10 pm' },
+    { type: 'block',   block: 'D', label: null,                start: '12:15 pm', end: '1:00 pm'  },
+    { type: 'block',   block: 'E', label: null,                start: '1:05 pm',  end: '1:50 pm'  },
+    { type: 'block',   block: 'F', label: null,                start: '1:55 pm',  end: '2:40 pm'  },
+  ],
+  tuesday: [
+    { type: 'block',   block: 'G', label: null,                start: '8:15 am',  end: '9:15 am'  },
+    { type: 'special', block: null, label: 'School Meeting',   start: '9:20 am',  end: '10:00 am' },
+    { type: 'block',   block: 'F', label: null,                start: '10:05 am', end: '11:20 am' },
+    { type: 'block',   block: 'D', label: null,                start: '11:30 am', end: '12:30 pm' },
+    { type: 'block',   block: 'C', label: null,                start: '12:35 pm', end: '1:50 pm'  },
+    { type: 'block',   block: 'A', label: null,                start: '1:55 pm',  end: '2:40 pm'  },
+  ],
+  wednesday: [
+    { type: 'block',   block: 'B', label: null,                start: '8:15 am',  end: '9:15 am'  },
+    { type: 'special', block: null, label: 'Assembly',         start: '9:20 am',  end: '9:50 am'  },
+    { type: 'block',   block: 'G', label: null,                start: '9:55 am',  end: '10:40 am' },
+    { type: 'block',   block: 'E', label: null,                start: '10:45 am', end: '12:00 pm' },
+  ],
+  thursday: [
+    { type: 'block',   block: 'F', label: null,                start: '8:15 am',  end: '9:15 am'  },
+    { type: 'special', block: null, label: 'I-Block',          start: '9:20 am',  end: '10:00 am' },
+    { type: 'block',   block: 'A', label: null,                start: '10:05 am', end: '11:20 am' },
+    { type: 'block',   block: 'C', label: null,                start: '11:30 am', end: '12:30 pm' },
+    { type: 'block',   block: 'D', label: null,                start: '12:35 pm', end: '1:50 pm'  },
+    { type: 'block',   block: 'E', label: null,                start: '1:55 pm',  end: '2:40 pm'  },
+  ],
+  friday: [
+    { type: 'block',   block: 'E', label: null,                 start: '8:15 am',  end: '9:15 am'  },
+    { type: 'special', block: null, label: 'Dept./Faculty Mtg', start: '9:20 am',  end: '10:00 am' },
+    { type: 'block',   block: 'G', label: null,                 start: '10:05 am', end: '11:20 am' },
+    { type: 'block',   block: 'D', label: null,                 start: '11:25 am', end: '12:10 pm' },
+    { type: 'block',   block: 'C', label: null,                 start: '12:15 pm', end: '1:00 pm'  },
+    { type: 'block',   block: 'F', label: null,                 start: '1:05 pm',  end: '1:50 pm'  },
+    { type: 'block',   block: 'B', label: null,                 start: '1:55 pm',  end: '2:40 pm'  },
+  ],
+  saturday: [
+    { type: 'block',   block: 'A', label: null,                start: '9:00 am',  end: '9:45 am'  },
+    { type: 'special', block: null, label: 'Assembly',         start: '9:50 am',  end: '10:20 am' },
+    { type: 'block',   block: 'B', label: null,                start: '10:25 am', end: '11:10 am' },
+    { type: 'block',   block: 'G', label: null,                start: '11:15 am', end: '12:00 pm' },
+  ],
+  alt_saturday: [
+    { type: 'block',   block: 'A', label: null,                start: '9:00 am',  end: '10:00 am' },
+    { type: 'special', block: null, label: 'Assembly',         start: '10:05 am', end: '10:35 am' },
+    { type: 'block',   block: 'B', label: null,                start: '10:40 am', end: '11:55 am' },
+  ],
+};
 
 // ─────────────────────────────────────────────
 //  SCREEN MANAGEMENT
@@ -1588,7 +1658,7 @@ async function importStatsTemplate() {
     const { data: group, error: ge } = await sb.from('assignment_groups').insert({
       course_id: course.id,
       user_id: currentUser.id,
-      name: g.name,
+      label: g.name,
       sort_order: gi,
     }).select().single();
     if (ge) throw new Error('Group insert failed: ' + ge.message);
@@ -1634,7 +1704,7 @@ async function fetchAndImportSpanishDoc() {
     const { data: group, error: ge } = await sb.from('assignment_groups').insert({
       course_id: course.id,
       user_id: currentUser.id,
-      name: g.name,
+      label: g.name,
       sort_order: gi,
     }).select().single();
     if (ge) throw new Error('Group insert failed: ' + ge.message);
