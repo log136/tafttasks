@@ -90,6 +90,13 @@
     .user-meta { font-size: 0.75rem; opacity: 0.8; text-align: right; }
     .logout-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
     .logout-btn:hover { background: rgba(255,255,255,0.35); }
+    /* ── Admin button ── */
+    .admin-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.35);
+      color: white; border-radius: 6px; padding: 4px 9px; font-size: 0.85rem;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .admin-btn:hover { background: rgba(255,255,255,0.28); }
     .sync-status { font-size: 0.72rem; opacity: 0.85; display: flex; align-items: center; gap: 5px; margin-top: 3px; }
     .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
     .sync-dot.syncing { background: #fbbf24; animation: syncpulse 1s ease-in-out infinite; }
@@ -501,6 +508,7 @@
             <span id="syncText">Loading…</span>
           </div>
         </div>
+        <button class="admin-btn" id="adminBtn" onclick="openAdminModal()" style="display:none" title="Admin">⚙</button>
         <button class="sync-canvas-btn" id="syncCanvasBtn" onclick="reSyncCanvas()">↻ Sync Canvas</button>
         <button class="logout-btn" onclick="signOut()">Sign out</button>
       </div>
@@ -582,6 +590,58 @@
   <!-- FOOTER -->
   <div class="footer">
     <span>Checks auto-save to cloud · Assignment Dashboard · Taft School 2026</span>
+  </div>
+
+  <!-- ADMIN MODAL -->
+  <div class="modal-overlay" id="adminModal" onclick="if(event.target===this)closeAdminModal()">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <div><h2>⚙ Admin Settings</h2></div>
+        <button class="modal-close" onclick="closeAdminModal()">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Section 1: Alt Saturday -->
+        <h3 style="font-size:0.85rem;font-weight:700;margin-bottom:12px;">Alt Saturday Date</h3>
+        <p style="font-size:0.78rem;color:#6b7280;margin-bottom:10px;">Set this to the date of the upcoming alt Saturday. Users will automatically see the alternate schedule on that day.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="adminAltSatDate" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;outline:none;">
+          <button class="modal-submit-btn" onclick="saveAltSaturday()" style="padding:6px 16px;font-size:0.82rem;">Save</button>
+          <button class="logout-btn" onclick="clearAltSaturday()" style="padding:6px 12px;font-size:0.78rem;">Clear</button>
+        </div>
+        <p id="adminAltSatStatus" style="font-size:0.75rem;margin-top:6px;color:#6b7280;"></p>
+
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border);">
+
+        <!-- Section 2: Custom Schedule Editor -->
+        <h3 style="font-size:0.85rem;font-weight:700;margin-bottom:12px;">Custom Schedule Override</h3>
+        <p style="font-size:0.78rem;color:#6b7280;margin-bottom:12px;">Create a special schedule for a specific date. All users will see it.</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;margin-bottom:4px;">Date</label>
+            <input type="date" id="adminOverrideDate" onchange="loadOverrideForDate()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;outline:none;">
+          </div>
+          <div style="flex:1;min-width:160px;">
+            <label style="display:block;font-size:0.75rem;font-weight:600;margin-bottom:4px;">Label</label>
+            <input type="text" id="adminOverrideLabel" placeholder="e.g. Exam Day Schedule" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;outline:none;">
+          </div>
+        </div>
+
+        <div id="adminOverrideEntries" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <button class="logout-btn" onclick="adminAddEntry('block')" style="font-size:0.78rem;padding:5px 12px;">+ Block</button>
+          <button class="logout-btn" onclick="adminAddEntry('special')" style="font-size:0.78rem;padding:5px 12px;">+ Special Event</button>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="modal-submit-btn" onclick="saveOverride()" style="padding:7px 20px;font-size:0.85rem;">Save Override</button>
+          <button class="logout-btn" onclick="deleteOverride()" style="padding:7px 14px;font-size:0.78rem;color:#dc2626;border-color:#fca5a5;">Delete</button>
+        </div>
+        <p id="adminOverrideStatus" style="font-size:0.75rem;margin-top:8px;color:#6b7280;"></p>
+
+      </div>
+    </div>
   </div>
 
 </div><!-- #app -->
@@ -778,6 +838,8 @@ async function handleAuthSubmit() {
 async function signOut() {
   await sb.auth.signOut();
   currentUser = null; COURSES = []; state = { done: {} };
+  const adminBtn = document.getElementById('adminBtn');
+  if (adminBtn) adminBtn.style.display = 'none';
   showScreen('authScreen');
 }
 
@@ -1292,6 +1354,143 @@ async function saveBlockAssignment(block, courseId) {
   if (error) console.error('saveBlockAssignment error:', error.message);
 }
 
+// ─────────────────────────────────────────────
+//  ADMIN PANEL
+// ─────────────────────────────────────────────
+function openAdminModal() {
+  const existing = APP_SETTINGS['alt_saturday_date'] || '';
+  document.getElementById('adminAltSatDate').value = existing;
+  document.getElementById('adminAltSatStatus').textContent =
+    existing ? `Currently set to ${existing}` : 'Not set';
+  document.getElementById('adminOverrideDate').value = '';
+  document.getElementById('adminOverrideLabel').value = '';
+  document.getElementById('adminOverrideEntries').innerHTML = '';
+  document.getElementById('adminOverrideStatus').textContent = '';
+  document.getElementById('adminModal').classList.add('open');
+}
+
+function closeAdminModal() {
+  document.getElementById('adminModal').classList.remove('open');
+}
+
+async function saveAltSaturday() {
+  const val = document.getElementById('adminAltSatDate').value;
+  if (!val) { alert('Pick a date first.'); return; }
+  const { error } = await sb.from('app_settings')
+    .upsert({ key: 'alt_saturday_date', value: val }, { onConflict: 'key' });
+  if (error) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + error.message; return; }
+  APP_SETTINGS['alt_saturday_date'] = val;
+  document.getElementById('adminAltSatStatus').textContent = `✓ Saved — ${val}`;
+  renderScheduleSidebar();
+}
+
+async function clearAltSaturday() {
+  const { error } = await sb.from('app_settings')
+    .upsert({ key: 'alt_saturday_date', value: '' }, { onConflict: 'key' });
+  if (error) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + error.message; return; }
+  APP_SETTINGS['alt_saturday_date'] = '';
+  document.getElementById('adminAltSatDate').value = '';
+  document.getElementById('adminAltSatStatus').textContent = 'Cleared.';
+  renderScheduleSidebar();
+}
+
+let adminEntries = [];
+
+function loadOverrideForDate() {
+  const date = document.getElementById('adminOverrideDate').value;
+  if (!date) return;
+  if (SCHEDULE_OVERRIDES[date]) {
+    document.getElementById('adminOverrideLabel').value = SCHEDULE_OVERRIDES[date].label;
+    adminEntries = JSON.parse(JSON.stringify(SCHEDULE_OVERRIDES[date].entries));
+  } else {
+    document.getElementById('adminOverrideLabel').value = '';
+    adminEntries = [];
+  }
+  renderAdminEntries();
+}
+
+function adminAddEntry(type) {
+  if (type === 'block') {
+    adminEntries.push({ type: 'block', block: 'A', label: null, start: '8:15 am', end: '9:15 am' });
+  } else {
+    adminEntries.push({ type: 'special', block: null, label: 'Assembly', start: '9:20 am', end: '9:50 am' });
+  }
+  renderAdminEntries();
+}
+
+function adminRemoveEntry(i) {
+  adminEntries.splice(i, 1);
+  renderAdminEntries();
+}
+
+function adminMoveEntry(i, delta) {
+  const j = i + delta;
+  if (j < 0 || j >= adminEntries.length) return;
+  [adminEntries[i], adminEntries[j]] = [adminEntries[j], adminEntries[i]];
+  renderAdminEntries();
+}
+
+function adminUpdateEntry(i, field, value) {
+  adminEntries[i][field] = value || null;
+}
+
+function renderAdminEntries() {
+  const container = document.getElementById('adminOverrideEntries');
+  if (!container) return;
+  container.innerHTML = adminEntries.map((entry, i) => {
+    const moveUp   = i > 0
+      ? `<button class="logout-btn" onclick="adminMoveEntry(${i},-1)" style="padding:2px 6px;font-size:0.7rem;">↑</button>`
+      : '<span style="width:26px;display:inline-block;"></span>';
+    const moveDown = i < adminEntries.length - 1
+      ? `<button class="logout-btn" onclick="adminMoveEntry(${i},1)" style="padding:2px 6px;font-size:0.7rem;">↓</button>`
+      : '<span style="width:26px;display:inline-block;"></span>';
+    const typeLabel = entry.type === 'block' ? '🔵' : '✦';
+    const blockOrLabel = entry.type === 'block'
+      ? `<select onchange="adminUpdateEntry(${i},'block',this.value)" style="padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.78rem;">
+          ${['A','B','C','D','E','F','G'].map(b => `<option value="${b}" ${entry.block===b?'selected':''}>${b}</option>`).join('')}
+         </select>`
+      : `<input type="text" value="${entry.label || ''}" oninput="adminUpdateEntry(${i},'label',this.value)" placeholder="Event name" style="width:80px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.78rem;">`;
+    return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid #f3f4f6;">
+      <span style="font-size:0.8rem;">${typeLabel}</span>
+      ${blockOrLabel}
+      <input type="text" value="${entry.start}" oninput="adminUpdateEntry(${i},'start',this.value)" placeholder="9:00 am" style="width:68px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.78rem;">
+      <span style="font-size:0.7rem;color:#9ca3af;">–</span>
+      <input type="text" value="${entry.end}" oninput="adminUpdateEntry(${i},'end',this.value)" placeholder="10:00 am" style="width:68px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.78rem;">
+      ${moveUp}${moveDown}
+      <button class="logout-btn" onclick="adminRemoveEntry(${i})" style="padding:2px 6px;font-size:0.7rem;color:#dc2626;">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveOverride() {
+  const date  = document.getElementById('adminOverrideDate').value;
+  const label = document.getElementById('adminOverrideLabel').value.trim();
+  if (!date)  { document.getElementById('adminOverrideStatus').textContent = '✗ Pick a date.'; return; }
+  if (!label) { document.getElementById('adminOverrideStatus').textContent = '✗ Add a label.'; return; }
+  if (!adminEntries.length) { document.getElementById('adminOverrideStatus').textContent = '✗ Add at least one entry.'; return; }
+  const { error } = await sb.from('schedule_overrides')
+    .upsert({ date, label, entries: adminEntries }, { onConflict: 'date' });
+  if (error) { document.getElementById('adminOverrideStatus').textContent = '✗ ' + error.message; return; }
+  SCHEDULE_OVERRIDES[date] = { label, entries: JSON.parse(JSON.stringify(adminEntries)) };
+  document.getElementById('adminOverrideStatus').textContent = `✓ Saved override for ${date}`;
+  renderScheduleSidebar();
+}
+
+async function deleteOverride() {
+  const date = document.getElementById('adminOverrideDate').value;
+  if (!date) { document.getElementById('adminOverrideStatus').textContent = '✗ Pick a date first.'; return; }
+  if (!SCHEDULE_OVERRIDES[date]) { document.getElementById('adminOverrideStatus').textContent = 'No override exists for this date.'; return; }
+  if (!confirm(`Delete the custom schedule for ${date}?`)) return;
+  const { error } = await sb.from('schedule_overrides').delete().eq('date', date);
+  if (error) { document.getElementById('adminOverrideStatus').textContent = '✗ ' + error.message; return; }
+  delete SCHEDULE_OVERRIDES[date];
+  adminEntries = [];
+  document.getElementById('adminOverrideLabel').value = '';
+  renderAdminEntries();
+  document.getElementById('adminOverrideStatus').textContent = `✓ Deleted override for ${date}`;
+  renderScheduleSidebar();
+}
+
 function renderJumps() {
   const container = document.getElementById('courseJumps');
   if (!container) return;
@@ -1496,7 +1695,7 @@ function closeMissingModal() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeMissingModal(); closeAddCourseModal(); }
+  if (e.key === 'Escape') { closeMissingModal(); closeAddCourseModal(); closeAdminModal(); }
 });
 
 // ─────────────────────────────────────────────
@@ -1511,6 +1710,10 @@ async function afterAuth() {
   const emailUser = (currentUser.email || '').split('@')[0];
   document.getElementById('headerSubtitle').textContent = emailUser;
   document.getElementById('userEmailDisplay').textContent = currentUser.email;
+
+  // Show admin button only for Logan
+  const adminBtn = document.getElementById('adminBtn');
+  if (adminBtn) adminBtn.style.display = currentUser.id === ADMIN_USER_ID ? 'inline-block' : 'none';
 
   const hasData = await loadUserData();
 
