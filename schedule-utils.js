@@ -37,3 +37,25 @@ export function advanceDay(day, delta) {
   if (next === 7) next = 1;  // forward from Sat → Mon
   return next;
 }
+
+/**
+ * Return { entries, label } for a given Date.
+ * Checks SCHEDULE_OVERRIDES first, then falls back to TAFT_SCHEDULE.
+ * Uses localDateStr (not toISOString) to avoid UTC offset issues.
+ * @param {Date} date
+ * @param {object} TAFT_SCHEDULE - hardcoded schedule constant
+ * @param {object} SCHEDULE_OVERRIDES - map of ISO date → { label, entries }
+ * @param {object} APP_SETTINGS - map of key → value (e.g. alt_saturday_date)
+ * @returns {{ entries: array, label: string|null }}
+ */
+export function getScheduleForDate(date, TAFT_SCHEDULE, SCHEDULE_OVERRIDES, APP_SETTINGS) {
+  const iso = localDateStr(date);
+  if (SCHEDULE_OVERRIDES[iso]) {
+    return { entries: SCHEDULE_OVERRIDES[iso].entries, label: SCHEDULE_OVERRIDES[iso].label };
+  }
+  const dow = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  if (dow === 0) return { entries: [], label: null };
+  const dayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const key = (dow === 6 && APP_SETTINGS['alt_saturday_date'] === iso) ? 'alt_saturday' : dayKeys[dow];
+  return { entries: TAFT_SCHEDULE[key] || [], label: null };
+}
