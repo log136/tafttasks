@@ -1,7 +1,7 @@
 // Supabase loaded from CDN inline — inject it dynamically
 const SUPABASE_URL = 'https://pupqkuunekeeyfnfjpde.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1cHFrdXVuZWtlZXlmbmZqcGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTM2NzEsImV4cCI6MjA4ODU4OTY3MX0.ktUUhaqi3BO5wAr8kWaTqvoQ1fxRlitvD9hpIUXOUdU';
-const NETLIFY_BASE = 'https://tafttasks.netlify.app';
+const CF_BASE = 'https://taft-dashboard.pages.dev';
 
 let sb = null;
 let currentUser = null;
@@ -273,14 +273,14 @@ async function fetchDocText(docId, driveFile = false) {
     if (!res.ok) throw new Error(`Drive export failed: ${res.status}`);
     return res.text();
   }
-  const res = await fetch(`${NETLIFY_BASE}/.netlify/functions/doc-proxy?docId=${docId}`);
+  const res = await fetch(`${CF_BASE}/doc-proxy?docId=${docId}`);
   if (!res.ok) throw new Error(`doc-proxy failed: ${res.status}`);
   return res.text();
 }
 
 async function aiParseDoc(docText) {
   const { data: { session } } = await sb.auth.getSession();
-  const res = await fetch(`${NETLIFY_BASE}/.netlify/functions/ai-parse`, {
+  const res = await fetch(`${CF_BASE}/ai-parse`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
