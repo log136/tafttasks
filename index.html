@@ -236,6 +236,9 @@
     .mini-bar-wrap { width: 80px; background: #f3f4f6; border-radius: 99px; height: 5px; overflow: hidden; }
     .mini-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
     .mini-count { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+    .course-edit-btn { background: none; border: none; color: transparent; cursor: pointer; font-size: 1rem; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; flex-shrink: 0; }
+    .course-header:hover .course-edit-btn { color: #d1d5db; }
+    .course-edit-btn:hover { color: var(--taft-red) !important; background: #fff0f0; }
     .course-delete-btn { background: none; border: none; color: transparent; cursor: pointer; font-size: 0.85rem; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; flex-shrink: 0; }
     .course-header:hover .course-delete-btn { color: #d1d5db; }
     .course-delete-btn:hover { color: #dc2626 !important; background: #fee2e2; }
@@ -592,6 +595,33 @@
     <span>Checks auto-save to cloud · Assignment Dashboard · Taft School 2026</span>
   </div>
 
+  <!-- EDIT COURSE MODAL -->
+  <div class="modal-overlay" id="editCourseModal" onclick="if(event.target===this)closeEditCourseModal()">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <div><h2>Edit Course</h2></div>
+        <button class="modal-close" onclick="closeEditCourseModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCourseId">
+        <div class="modal-form-field">
+          <label>Course Name *</label>
+          <input type="text" id="editCourseName" placeholder="e.g. Honors Statistics">
+        </div>
+        <div class="modal-form-field">
+          <label>Teacher</label>
+          <input type="text" id="editCourseTeacher" placeholder="e.g. Mr. Smith">
+        </div>
+        <div class="modal-form-field">
+          <label>Color</label>
+          <div class="color-picker" id="editCourseColorPicker" style="padding:4px 0"></div>
+          <input type="hidden" id="editCourseColor" value="#c0392b">
+        </div>
+        <button class="modal-submit-btn" onclick="saveEditCourse()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ADMIN MODAL -->
   <div class="modal-overlay" id="adminModal" onclick="if(event.target===this)closeAdminModal()">
     <div class="modal" style="max-width:560px">
@@ -716,7 +746,12 @@ function getScheduleForDate(date) {
   return { entries: TAFT_SCHEDULE[key] || [], label: null };
 }
 
-const PRESET_COLORS = ['#c0392b','#7c3aed','#1d4ed8','#b45309','#065f46','#0e7490','#be185d','#374151'];
+const PRESET_COLORS = [
+  '#c0392b','#e74c3c','#e91e8c','#be185d',
+  '#7c3aed','#8e44ad','#6d28d9','#4f46e5',
+  '#1d4ed8','#0e7490','#0891b2','#065f46',
+  '#16a34a','#b45309','#d97706','#374151',
+];
 
 // ─────────────────────────────────────────────
 //  ADMIN + SCHEDULE CONSTANTS
@@ -949,13 +984,15 @@ function setSyncStatus(mode) {
 // ─────────────────────────────────────────────
 //  COLOR PICKER
 // ─────────────────────────────────────────────
-function initColorPicker(pickerId, hiddenId) {
+function initColorPicker(pickerId, hiddenId, selectedColor) {
   const container = document.getElementById(pickerId);
   if (!container) return;
-  container.innerHTML = PRESET_COLORS.map((c, i) =>
-    `<div class="color-opt${i === 0 ? ' selected' : ''}" style="background:${c}" data-color="${c}"
+  const active = selectedColor || PRESET_COLORS[0];
+  container.innerHTML = PRESET_COLORS.map(c =>
+    `<div class="color-opt${c === active ? ' selected' : ''}" style="background:${c}" data-color="${c}"
       onclick="selectColor('${pickerId}','${hiddenId}','${c}',this)"></div>`
   ).join('');
+  document.getElementById(hiddenId).value = active;
 }
 
 function selectColor(pickerId, hiddenId, color, el) {
@@ -1049,6 +1086,49 @@ function openAddCourseModal() {
 function closeAddCourseModal() {
   document.getElementById('addCourseModal').classList.remove('open');
 }
+
+// ─────────────────────────────────────────────
+//  EDIT COURSE
+// ─────────────────────────────────────────────
+function openEditCourseModal(courseId) {
+  const course = COURSES.find(c => c.id === courseId);
+  if (!course) return;
+  document.getElementById('editCourseId').value = courseId;
+  document.getElementById('editCourseName').value = course.name;
+  document.getElementById('editCourseTeacher').value = course.teacher || '';
+  initColorPicker('editCourseColorPicker', 'editCourseColor', course.color);
+  document.getElementById('editCourseModal').classList.add('open');
+  setTimeout(() => document.getElementById('editCourseName').focus(), 50);
+}
+
+function closeEditCourseModal() {
+  document.getElementById('editCourseModal').classList.remove('open');
+}
+
+async function saveEditCourse() {
+  const courseId = document.getElementById('editCourseId').value;
+  const name     = document.getElementById('editCourseName').value.trim();
+  if (!name) { alert('Course name is required.'); return; }
+  const teacher  = document.getElementById('editCourseTeacher').value.trim();
+  const color    = document.getElementById('editCourseColor').value;
+
+  const btn = document.querySelector('#editCourseModal .modal-submit-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  const { error } = await sb.from('courses').update({ name, teacher, color }).eq('id', courseId);
+
+  btn.textContent = 'Save Changes'; btn.disabled = false;
+
+  if (error) { alert('Error saving: ' + error.message); return; }
+
+  const course = COURSES.find(c => c.id === courseId);
+  if (course) { course.name = name; course.teacher = teacher; course.color = color; }
+
+  closeEditCourseModal();
+  renderAll();
+  setSyncStatus('ok');
+}
+
 
 async function addCourseFromDashboard() {
   const name = document.getElementById('addCourseName').value.trim();
@@ -1211,6 +1291,8 @@ function renderCourse(course) {
           <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${course.color}"></div></div>
           <span class="mini-count">${done}/${total}</span>
         </div>
+        <button class="course-edit-btn" title="Edit course"
+          onclick="event.stopPropagation();openEditCourseModal('${course.id}')">✎</button>
         <button class="course-delete-btn" title="Delete course"
           onclick="event.stopPropagation();deleteCourse('${course.id}')">✕</button>
         <span class="collapse-icon">▼</span>
@@ -1695,7 +1777,7 @@ function closeMissingModal() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeMissingModal(); closeAddCourseModal(); closeAdminModal(); }
+  if (e.key === 'Escape') { closeMissingModal(); closeAddCourseModal(); closeEditCourseModal(); closeAdminModal(); }
 });
 
 // ─────────────────────────────────────────────
