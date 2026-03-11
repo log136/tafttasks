@@ -610,6 +610,52 @@ let schedViewDate = new Date();
 if (schedViewDate.getDay() === 0) schedViewDate.setDate(schedViewDate.getDate() + 1);
 let schedEditMode = false;
 
+// ─────────────────────────────────────────────
+//  SCHEDULE UTILITIES
+// ─────────────────────────────────────────────
+function parseTaftTime(str) {
+  const [time, period] = str.trim().toLowerCase().split(' ');
+  let [h, m] = time.split(':').map(Number);
+  if (period === 'pm' && h !== 12) h += 12;
+  if (period === 'am' && h === 12) h = 0;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function isCurrentBlock(entry) {
+  const now = new Date();
+  return now >= parseTaftTime(entry.start) && now < parseTaftTime(entry.end);
+}
+
+// Returns local YYYY-MM-DD string (avoids UTC offset issues with toISOString)
+function localDateStr(date) {
+  const y  = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const d  = String(date.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${d}`;
+}
+
+// Advance a JS day-of-week integer (1=Mon…6=Sat) by +1 or -1, skipping Sunday (0)
+function advanceDay(day, delta) {
+  let next = day + delta;
+  if (next === 0) next = 6;  // backward from Mon → Sat
+  if (next === 7) next = 1;  // forward from Sat → Mon
+  return next;
+}
+
+function getScheduleForDate(date) {
+  const iso = localDateStr(date);
+  if (SCHEDULE_OVERRIDES[iso]) {
+    return { entries: SCHEDULE_OVERRIDES[iso].entries, label: SCHEDULE_OVERRIDES[iso].label };
+  }
+  const dow = date.getDay();
+  if (dow === 0) return { entries: [], label: null };
+  const dayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const key = (dow === 6 && APP_SETTINGS['alt_saturday_date'] === iso) ? 'alt_saturday' : dayKeys[dow];
+  return { entries: TAFT_SCHEDULE[key] || [], label: null };
+}
+
 const PRESET_COLORS = ['#c0392b','#7c3aed','#1d4ed8','#b45309','#065f46','#0e7490','#be185d','#374151'];
 
 // ─────────────────────────────────────────────
@@ -925,6 +971,7 @@ async function finishWizard() {
   const hasData = await loadUserData();
   if (hasData) { renderAll(); updateMissingCount(); }
   else { document.getElementById('mainContent').innerHTML = '<div class="add-course-card" onclick="openAddCourseModal()">+ Add a Course</div>'; }
+  renderScheduleSidebar();
   setSyncStatus('ok');
 }
 
@@ -1121,6 +1168,128 @@ function renderAll() {
   renderJumps();
   updateOverall();
   applyFilter();
+  renderScheduleSidebar();
+}
+
+// ─────────────────────────────────────────────
+//  SCHEDULE SIDEBAR
+// ─────────────────────────────────────────────
+function renderScheduleSidebar() {
+  const el = document.getElementById('scheduleSidebar');
+  if (!el) return;
+
+  const today    = new Date();
+  const todayIso = localDateStr(today);
+  const viewIso  = localDateStr(schedViewDate);
+  const isToday  = viewIso === todayIso;
+  const dow      = schedViewDate.getDay();
+
+  const { entries, label } = getScheduleForDate(schedViewDate);
+
+  const dayNames   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayLabel   = dayNames[dow];
+  const dateLabel  = `${monthNames[schedViewDate.getMonth()]} ${schedViewDate.getDate()}`;
+
+  // Build entry rows HTML
+  let rowsHtml = '';
+  if (entries.length === 0) {
+    rowsHtml = `<div class="sched-empty">No classes today</div>`;
+  } else {
+    for (const entry of entries) {
+      if (entry.type === 'special') {
+        rowsHtml += `
+          <div class="sched-special-row">
+            <div class="sched-special-icon">·</div>
+            <div class="sched-special-info">
+              <div class="sched-special-label">${entry.label}</div>
+              <div class="sched-special-time">${entry.start}–${entry.end}</div>
+            </div>
+          </div>`;
+      } else {
+        const current  = isToday && isCurrentBlock(entry);
+        const color    = BLOCK_COLORS[entry.block] || '#6b7280';
+        const courseId = BLOCK_SCHEDULE[entry.block];
+        const course   = courseId ? COURSES.find(c => c.id === courseId) : null;
+        const courseName = course?.name || null;
+
+        let courseCell;
+        if (schedEditMode) {
+          const options = [
+            `<option value="" ${!courseId ? 'selected' : ''}>Free block</option>`,
+            ...COURSES.map(c =>
+              `<option value="${c.id}" ${c.id === courseId ? 'selected' : ''}>${c.name}</option>`
+            ),
+          ].join('');
+          courseCell = `<select class="sched-select" onchange="saveBlockAssignment('${entry.block}', this.value)">${options}</select>`;
+        } else {
+          courseCell = courseName
+            ? `<div class="sched-block-course">${courseName}</div>`
+            : `<div class="sched-block-free">Free block</div>`;
+        }
+
+        rowsHtml += `
+          <div class="sched-block-row${current ? ' current' : ''}">
+            <div class="sched-block-letter" style="background:${color}">${entry.block}</div>
+            <div class="sched-block-info">
+              ${courseCell}
+              <div class="sched-block-time">${entry.start}–${entry.end}</div>
+            </div>
+          </div>`;
+      }
+    }
+  }
+
+  const overrideBanner = label
+    ? `<div class="sched-override-banner">Special: ${label}</div>`
+    : '';
+
+  const editBtnClass = schedEditMode ? 'sched-edit-btn active' : 'sched-edit-btn';
+
+  el.innerHTML = `
+    <div class="sched-header">
+      <span>📅 Schedule</span>
+      <button class="${editBtnClass}" onclick="toggleSchedEditMode()" title="Edit block assignments">✏️</button>
+    </div>
+    <div class="sched-day-nav">
+      <button class="sched-nav-arrow" onclick="schedNav(-1)">‹</button>
+      <div>
+        <div class="sched-day-label">${isToday ? 'Today · ' : ''}${dayLabel}</div>
+        <div class="sched-day-sub">${dateLabel}</div>
+      </div>
+      <button class="sched-nav-arrow" onclick="schedNav(1)">›</button>
+    </div>
+    ${overrideBanner}
+    ${rowsHtml}
+  `;
+}
+
+function schedNav(delta) {
+  const currentDow = schedViewDate.getDay();
+  const targetDow  = advanceDay(currentDow, delta);
+  const diff       = targetDow - currentDow;
+  const daysDiff   = delta > 0
+    ? (diff > 0 ? diff : diff + 7)
+    : (diff < 0 ? diff : diff - 7);
+  const d = new Date(schedViewDate);
+  d.setDate(d.getDate() + daysDiff);
+  schedViewDate = d;
+  renderScheduleSidebar();
+}
+
+function toggleSchedEditMode() {
+  schedEditMode = !schedEditMode;
+  renderScheduleSidebar();
+}
+
+async function saveBlockAssignment(block, courseId) {
+  const val = courseId || null;
+  BLOCK_SCHEDULE[block] = val;
+  const { error } = await sb.from('block_schedule').upsert(
+    { user_id: currentUser.id, block, course_id: val },
+    { onConflict: 'user_id,block' }
+  );
+  if (error) console.error('saveBlockAssignment error:', error.message);
 }
 
 function renderJumps() {
