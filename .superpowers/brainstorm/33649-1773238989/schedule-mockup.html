@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedule Sidebar Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; padding: 24px; }
+
+  h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: #6b7280; font-size: 0.88rem; margin-bottom: 20px; }
+
+  .demo-wrap {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    max-width: 900px;
+  }
+
+  /* Main assignments panel (abbreviated) */
+  .main-panel {
+    flex: 1;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    min-height: 460px;
+  }
+  .main-header {
+    background: #8B0000;
+    color: white;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .main-body { padding: 14px 16px; }
+  .course-block {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .course-block-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .course-assignments { padding: 0 12px 8px; }
+  .assign-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid #f3f4f6; font-size: 0.78rem; color: #374151; }
+  .tag { font-size: 0.68rem; padding: 1px 6px; border-radius: 99px; font-weight: 600; background: #fef3c7; color: #92400e; }
+  .tag.quiz { background: #dcfce7; color: #14532d; }
+  .placeholder-rows { color: #9ca3af; font-size: 0.78rem; padding-top: 4px; }
+
+  /* Schedule sidebar */
+  .schedule-sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .sched-header {
+    background: #1a1a2e;
+    color: white;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  .day-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  .day-nav-arrow {
+    width: 20px;
+    height: 20px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    color: #374151;
+  }
+  .day-nav-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+  .day-nav-sub {
+    font-size: 0.65rem;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 1px;
+  }
+
+  .block-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.75rem;
+  }
+  .block-row:last-child { border-bottom: none; }
+  .block-letter {
+    width: 30px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: white;
+    padding: 9px 0;
+    flex-shrink: 0;
+  }
+  .block-info {
+    padding: 6px 8px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .block-course { font-weight: 600; color: #111827; font-size: 0.73rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .block-time { font-size: 0.64rem; color: #9ca3af; margin-top: 1px; }
+  .block-free { color: #9ca3af; font-style: italic; }
+
+  .special-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.7rem;
+    background: #fafafa;
+  }
+  .special-icon {
+    width: 30px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.75rem;
+    padding: 6px 0;
+  }
+  .special-label { color: #6b7280; padding: 6px 8px; font-style: italic; font-size: 0.68rem; }
+
+  /* Highlight today's current block */
+  .block-row.current { background: #fff8f8; }
+  .block-row.current .block-course { color: #8B0000; }
+
+  /* Alt Saturday toggle (settings area) */
+  .settings-note {
+    margin-top: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    overflow: hidden;
+    max-width: 900px;
+  }
+  .settings-header {
+    background: #f3f4f6;
+    padding: 10px 16px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+  }
+  .toggle-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+    color: #065f46;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+  .settings-desc { color: #6b7280; font-size: 0.78rem; }
+
+  .legend {
+    margin-top: 16px;
+    font-size: 0.75rem;
+    color: #6b7280;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h2>Schedule Sidebar — Proposed Design</h2>
+<p class="subtitle">Today's blocks in the sidebar, navigate to other days with arrows. Alt Saturday toggle lives in a settings strip below the main content.</p>
+
+<div class="demo-wrap">
+
+  <!-- Main assignments panel -->
+  <div class="main-panel">
+    <div class="main-header">Taft Assignment Dashboard</div>
+    <div class="main-body">
+      <div class="course-block">
+        <div class="course-block-header">
+          <div class="dot" style="background:#1d4ed8"></div> AP Statistics
+        </div>
+        <div class="course-assignments">
+          <div class="assign-row"><span class="tag">hw</span> Chapter 7 Review — due tomorrow</div>
+          <div class="assign-row"><span class="tag quiz">quiz</span> Unit 3 Quiz — due Friday</div>
+        </div>
+      </div>
+      <div class="course-block">
+        <div class="course-block-header">
+          <div class="dot" style="background:#7c3aed"></div> Spanish IV
+        </div>
+        <div class="course-assignments">
+          <div class="assign-row"><span class="tag">hw</span> Bloque B Tarea: write paragraph</div>
+        </div>
+      </div>
+      <div class="course-block">
+        <div class="course-block-header">
+          <div class="dot" style="background:#065f46"></div> Psychology
+        </div>
+        <div class="course-assignments">
+          <div class="placeholder-rows">No upcoming assignments</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule sidebar -->
+  <div class="schedule-sidebar">
+    <div class="sched-header">📅 Schedule</div>
+
+    <!-- Day navigation -->
+    <div class="day-nav">
+      <div class="day-nav-arrow">‹</div>
+      <div>
+        <div class="day-nav-label">Thursday</div>
+        <div class="day-nav-sub">Mar 13</div>
+      </div>
+      <div class="day-nav-arrow">›</div>
+    </div>
+
+    <!-- Blocks for Thursday: F, [I-Block], A, C, D, E -->
+    <div class="block-row">
+      <div class="block-letter" style="background:#4f9ca8;">F</div>
+      <div class="block-info">
+        <div class="block-course">AP Statistics</div>
+        <div class="block-time">8:15–9:15 am</div>
+      </div>
+    </div>
+
+    <div class="special-row">
+      <div class="special-icon">📢</div>
+      <div class="special-label">I-Block · 9:20–10:00</div>
+    </div>
+
+    <div class="block-row current">
+      <div class="block-letter" style="background:#e6a817;">A</div>
+      <div class="block-info">
+        <div class="block-course">AP Statistics</div>
+        <div class="block-time">10:05–11:20 am</div>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-letter" style="background:#7c6fd4;">C</div>
+      <div class="block-info">
+        <div class="block-course">Spanish IV</div>
+        <div class="block-time">11:30 am–12:30 pm</div>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-letter" style="background:#9b5de5;">D</div>
+      <div class="block-info">
+        <div class="block-free">Free block</div>
+        <div class="block-time">12:35–1:50 pm</div>
+      </div>
+    </div>
+
+    <div class="block-row">
+      <div class="block-letter" style="background:#4caf6a;">E</div>
+      <div class="block-info">
+        <div class="block-course">Psychology</div>
+        <div class="block-time">1:55–2:40 pm</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Alt Saturday toggle -->
+<div class="settings-note">
+  <div class="settings-header">⚙️ Schedule Settings</div>
+  <div class="settings-row">
+    <div class="toggle-pill">
+      <div class="toggle-dot"></div>
+      This Saturday is Alt Saturday
+    </div>
+    <div class="settings-desc">Applies the alternate Saturday schedule (longer blocks, no G block). Toggle each week as needed.</div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#fff8f8;border:1px solid #fca5a5;"></div> Current block (highlighted)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fafafa;border:1px solid #e5e7eb;"></div> Special events (I-Block, Assembly, etc.)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9ca3af;"></div> Free / unassigned block</div>
+</div>
+
+</body>
+</html>

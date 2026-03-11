@@ -90,6 +90,9 @@
     .user-meta { font-size: 0.75rem; opacity: 0.8; text-align: right; }
     .logout-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
     .logout-btn:hover { background: rgba(255,255,255,0.35); }
+    /* ── Secondary button (for use inside modals) ── */
+    .modal-secondary-btn { background: #f3f4f6; border: 1px solid #e5e7eb; color: #374151; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+    .modal-secondary-btn:hover { background: #e5e7eb; }
     /* ── Admin button ── */
     .admin-btn {
       background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.35);
@@ -637,7 +640,7 @@
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input type="date" id="adminAltSatDate" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.85rem;outline:none;">
           <button class="modal-submit-btn" onclick="saveAltSaturday()" style="padding:6px 16px;font-size:0.82rem;">Save</button>
-          <button class="logout-btn" onclick="clearAltSaturday()" style="padding:6px 12px;font-size:0.78rem;">Clear</button>
+          <button class="modal-secondary-btn" onclick="clearAltSaturday()" style="padding:6px 12px;font-size:0.78rem;">Clear</button>
         </div>
         <p id="adminAltSatStatus" style="font-size:0.75rem;margin-top:6px;color:#6b7280;"></p>
 
@@ -660,13 +663,13 @@
         <div id="adminOverrideEntries" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-          <button class="logout-btn" onclick="adminAddEntry('block')" style="font-size:0.78rem;padding:5px 12px;">+ Block</button>
-          <button class="logout-btn" onclick="adminAddEntry('special')" style="font-size:0.78rem;padding:5px 12px;">+ Special Event</button>
+          <button class="modal-secondary-btn" onclick="adminAddEntry('block')" style="font-size:0.78rem;padding:5px 12px;">+ Block</button>
+          <button class="modal-secondary-btn" onclick="adminAddEntry('special')" style="font-size:0.78rem;padding:5px 12px;">+ Special Event</button>
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="modal-submit-btn" onclick="saveOverride()" style="padding:7px 20px;font-size:0.85rem;">Save Override</button>
-          <button class="logout-btn" onclick="deleteOverride()" style="padding:7px 14px;font-size:0.78rem;color:#dc2626;border-color:#fca5a5;">Delete</button>
+          <button class="modal-secondary-btn" onclick="deleteOverride()" style="padding:7px 14px;font-size:0.78rem;color:#dc2626;border-color:#fca5a5;">Delete</button>
         </div>
         <p id="adminOverrideStatus" style="font-size:0.75rem;margin-top:8px;color:#6b7280;"></p>
 
@@ -1521,10 +1524,10 @@ function renderAdminEntries() {
   if (!container) return;
   container.innerHTML = adminEntries.map((entry, i) => {
     const moveUp   = i > 0
-      ? `<button class="logout-btn" onclick="adminMoveEntry(${i},-1)" style="padding:2px 6px;font-size:0.7rem;">↑</button>`
+      ? `<button class="modal-secondary-btn" onclick="adminMoveEntry(${i},-1)" style="padding:2px 6px;font-size:0.7rem;">↑</button>`
       : '<span style="width:26px;display:inline-block;"></span>';
     const moveDown = i < adminEntries.length - 1
-      ? `<button class="logout-btn" onclick="adminMoveEntry(${i},1)" style="padding:2px 6px;font-size:0.7rem;">↓</button>`
+      ? `<button class="modal-secondary-btn" onclick="adminMoveEntry(${i},1)" style="padding:2px 6px;font-size:0.7rem;">↓</button>`
       : '<span style="width:26px;display:inline-block;"></span>';
     const typeLabel = entry.type === 'block' ? '🔵' : '✦';
     const blockOrLabel = entry.type === 'block'
@@ -1539,7 +1542,7 @@ function renderAdminEntries() {
       <span style="font-size:0.7rem;color:#9ca3af;">–</span>
       <input type="text" value="${entry.end}" oninput="adminUpdateEntry(${i},'end',this.value)" placeholder="10:00 am" style="width:68px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.78rem;">
       ${moveUp}${moveDown}
-      <button class="logout-btn" onclick="adminRemoveEntry(${i})" style="padding:2px 6px;font-size:0.7rem;color:#dc2626;">×</button>
+      <button class="modal-secondary-btn" onclick="adminRemoveEntry(${i})" style="padding:2px 6px;font-size:0.7rem;color:#dc2626;">×</button>
     </div>`;
   }).join('');
 }

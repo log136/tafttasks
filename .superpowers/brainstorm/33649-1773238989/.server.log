@@ -1,0 +1,6 @@
+{"type":"server-started","port":50440,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:50440","screen_dir":"/Users/logan/Desktop/Taft Dashboard/taft-dashboard/.superpowers/brainstorm/33649-1773238989"}
+{"type":"screen-added","file":"/Users/logan/Desktop/Taft Dashboard/taft-dashboard/.superpowers/brainstorm/33649-1773238989/schedule-layout.html"}
+{"source":"user-event","type":"click","text":"Assignments\n          AP StatisticsSpanish IVPsychology\n        \n        \n          Today\n          \n            A · Stats\n            B · Spanish\n            C · Free\n          \n        \n      \n    \n    \n      B — Sidebar panel\n      Today's schedule lives in a narrow panel beside the main assignment list. Always visible.","choice":"sidebar","id":null,"timestamp":1773239121328}
+{"type":"screen-added","file":"/Users/logan/Desktop/Taft Dashboard/taft-dashboard/.superpowers/brainstorm/33649-1773238989/waiting-1.html"}
+{"type":"screen-updated","file":"/Users/logan/Desktop/Taft Dashboard/taft-dashboard/.superpowers/brainstorm/33649-1773238989/waiting-1.html"}
+{"type":"screen-added","file":"/Users/logan/Desktop/Taft Dashboard/taft-dashboard/.superpowers/brainstorm/33649-1773238989/schedule-mockup.html"}

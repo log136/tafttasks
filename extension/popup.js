@@ -1,7 +1,7 @@
 // Supabase loaded from CDN inline — inject it dynamically
 const SUPABASE_URL = 'https://pupqkuunekeeyfnfjpde.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1cHFrdXVuZWtlZXlmbmZqcGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTM2NzEsImV4cCI6MjA4ODU4OTY3MX0.ktUUhaqi3BO5wAr8kWaTqvoQ1fxRlitvD9hpIUXOUdU';
-const NETLIFY_BASE = 'https://graceful-cupcake-2e9b61.netlify.app';
+const NETLIFY_BASE = 'https://tafttasks.netlify.app';
 
 let sb = null;
 let currentUser = null;
@@ -20,13 +20,71 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Ask content script for page data
+  // Scan the live page DOM directly
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    pageData = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_DATA' });
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        // Extract Canvas module items (supports both selector variants)
+        const assignments = [];
+        const itemAnchors = [
+          ...document.querySelectorAll('.ig-row[data-module-type] .ig-title a'),
+          ...document.querySelectorAll('li.context_module_item a.ig-title'),
+        ];
+        for (const anchor of itemAnchors) {
+          const href = anchor.getAttribute('href') || '';
+          const fullUrl = href.startsWith('http') ? href : location.origin + href;
+          const gdoc = fullUrl.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+          if (gdoc) continue; // handled below
+          const li = anchor.closest('li.context_module_item');
+          const typeClass = li?.classList;
+          let type = 'homework';
+          if (typeClass?.contains('quiz')) type = 'quiz';
+          else if (typeClass?.contains('discussion_topic')) type = 'classwork';
+          else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment')) type = 'reading';
+          const dueEl = li?.querySelector('.due_date_display');
+          let due = null;
+          if (dueEl) {
+            const cleaned = dueEl.textContent.trim().replace(/\s+at\s+\d+:\d+\s*[ap]m/i, '');
+            const d = new Date(cleaned);
+            if (!isNaN(d)) due = d.toISOString().slice(0, 10);
+          }
+          const idMatch = href.match(/\/courses\/(\d+)\/(?:assignments|quizzes)\/(\d+)/);
+          assignments.push({
+            name: anchor.textContent.trim(),
+            url: fullUrl,
+            type,
+            due,
+            canvasCourseId: idMatch ? parseInt(idMatch[1]) : null,
+            canvasAssignmentId: idMatch ? parseInt(idMatch[2]) : null,
+          });
+        }
+        // Extract Google Doc and Drive file IDs from links and iframes
+        const googleDocIds = [];   // { id, driveFile }
+        const seen = new Set();
+        const addDoc = (src, driveFile = false) => {
+          const m = driveFile
+            ? (src || '').match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
+            : (src || '').match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+          if (m && !seen.has(m[1])) { seen.add(m[1]); googleDocIds.push({ id: m[1], driveFile }); }
+        };
+        document.querySelectorAll('a[href*="docs.google.com/document"]').forEach(a => addDoc(a.href, false));
+        document.querySelectorAll('iframe').forEach(f => {
+          const src = f.src || f.getAttribute('src') || '';
+          addDoc(src, false);
+          addDoc(src, true);
+        });
+        return { assignments, googleDocIds };
+      },
+    });
+    pageData = result.result;
   } catch {
     pageData = null;
   }
+
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('importBtn').addEventListener('click', doImport);
 
   render();
 });
@@ -45,7 +103,7 @@ function render() {
     const g = pageData.googleDocIds.length;
     const parts = [];
     if (a > 0) parts.push(`<strong>${a}</strong> Canvas assignment${a !== 1 ? 's' : ''}`);
-    if (g > 0) parts.push(`<strong>${g}</strong> Google Doc${g !== 1 ? 's' : ''} detected`);
+    if (g > 0) parts.push(`<strong>${g}</strong> document${g !== 1 ? 's' : ''} detected`);
     document.getElementById('foundSummary').innerHTML = 'Found on this page:<br>' + parts.join('<br>');
     document.getElementById('userLine').textContent = `✓ Signed in as ${currentUser.email}`;
   }
@@ -87,15 +145,16 @@ async function doImport() {
   try {
     let allAssignments = [...pageData.assignments];
 
-    // Fetch + AI-parse any Google Docs
-    for (const docId of pageData.googleDocIds) {
-      statusEl.textContent = `Parsing Google Doc…`;
-      const docText = await fetchDocText(docId);
+    // Fetch + AI-parse any Google Docs / Drive files
+    for (const doc of pageData.googleDocIds) {
+      statusEl.textContent = `Parsing document…`;
+      const docText = await fetchDocText(doc.id, doc.driveFile);
       const aiAssignments = await aiParseDoc(docText);
       allAssignments = allAssignments.concat(
-        aiAssignments.map(a => ({ ...a, canvasCourseId: null, canvasAssignmentId: null, googleDocId: docId }))
+        aiAssignments.map(a => ({ ...a, canvasCourseId: null, canvasAssignmentId: null }))
       );
     }
+
 
     if (!allAssignments.length) {
       statusEl.textContent = 'No assignments found to import.';
@@ -112,23 +171,36 @@ async function doImport() {
     for (const [courseId, items] of Object.entries(courseGroups)) {
       const course = await getOrCreateCourse(courseId, items[0]);
       const group = await getOrCreateGroup(course.id, 'Imported');
-      const rows = items.map((a, i) => ({
-        group_id: group.id,
-        user_id: currentUser.id,
-        name: a.name,
-        type: a.type,
-        due: a.due || null,
-        url: a.url || null,
-        canvas_assignment_id: a.canvasAssignmentId || null,
-        done: false,
-        sort_order: i,
-      }));
-      const { error: insertError } = await sb.from('assignments').insert(rows);
-      if (insertError) throw new Error('Assignment insert failed: ' + insertError.message);
+      const { data: existing } = await sb.from('assignments')
+        .select('name').eq('group_id', group.id).eq('user_id', currentUser.id);
+      const existingNames = new Set((existing || []).map(a => a.name));
+
+      const rows = items
+        .filter(a => !existingNames.has(a.name))
+        .map((a, i) => ({
+          group_id: group.id,
+          user_id: currentUser.id,
+          name: a.name,
+          type: a.type,
+          due: a.due || null,
+          url: a.url || null,
+          canvas_assignment_id: a.canvasAssignmentId || null,
+          done: false,
+          sort_order: existingNames.size + i,
+        }));
+
+      if (rows.length > 0) {
+        const { error: insertError } = await sb.from('assignments').insert(rows);
+        if (insertError) throw new Error('Assignment insert failed: ' + insertError.message);
+      }
       saved += rows.length;
     }
 
-    statusEl.textContent = `✓ Imported ${saved} assignment${saved !== 1 ? 's' : ''}!`;
+    const total = allAssignments.length;
+    const skipped = total - saved;
+    statusEl.textContent = skipped > 0
+      ? `✓ Imported ${saved} new, ${skipped} already existed.`
+      : `✓ Imported ${saved} assignment${saved !== 1 ? 's' : ''}!`;
   } catch (err) {
     statusEl.textContent = '✗ ' + err.message;
     statusEl.className = 'status error';
@@ -148,17 +220,21 @@ function groupByCourse(assignments) {
 }
 
 async function getOrCreateCourse(canvasCourseId, sampleAssignment) {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const courseName = canvasCourseId === 'google-doc'
+    ? (tab.title?.replace(/\s*[-|].*$/, '').trim() || 'Imported Course')
+    : (tab.title?.replace(/\s*[-|].*$/, '').trim() || `Course ${canvasCourseId}`);
+
   if (canvasCourseId !== 'google-doc') {
     const { data } = await sb.from('courses')
       .select('*').eq('user_id', currentUser.id).eq('canvas_course_id', parseInt(canvasCourseId)).single();
     if (data) return data;
+  } else {
+    // Match Google Doc courses by name to prevent duplicates
+    const { data } = await sb.from('courses')
+      .select('*').eq('user_id', currentUser.id).eq('name', courseName).is('canvas_course_id', null).maybeSingle();
+    if (data) return data;
   }
-
-  // Use page title as course name
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const courseName = canvasCourseId === 'google-doc'
-    ? 'Imported Course'
-    : (tab.title?.replace(/\s*[-|].*$/, '').trim() || `Course ${canvasCourseId}`);
 
   const colors = ['#1d4ed8', '#065f46', '#7c3aed', '#b45309', '#0e7490', '#be123c'];
   const color = colors[Math.floor(Math.random() * colors.length)];
@@ -182,7 +258,7 @@ async function getOrCreateGroup(courseId, groupName) {
   const { data: group, error } = await sb.from('assignment_groups').insert({
     course_id: courseId,
     user_id: currentUser.id,
-    name: groupName,
+    label: groupName,
     sort_order: 0,
   }).select().single();
 
@@ -190,19 +266,32 @@ async function getOrCreateGroup(courseId, groupName) {
   return group;
 }
 
-async function fetchDocText(docId) {
+async function fetchDocText(docId, driveFile = false) {
+  if (driveFile) {
+    // Fetch directly from browser — user is already authenticated with Google
+    const res = await fetch(`https://docs.google.com/document/d/${docId}/export?format=txt`);
+    if (!res.ok) throw new Error(`Drive export failed: ${res.status}`);
+    return res.text();
+  }
   const res = await fetch(`${NETLIFY_BASE}/.netlify/functions/doc-proxy?docId=${docId}`);
   if (!res.ok) throw new Error(`doc-proxy failed: ${res.status}`);
   return res.text();
 }
 
 async function aiParseDoc(docText) {
+  const { data: { session } } = await sb.auth.getSession();
   const res = await fetch(`${NETLIFY_BASE}/.netlify/functions/ai-parse`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
     body: JSON.stringify({ docText }),
   });
-  if (!res.ok) throw new Error(`ai-parse failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `ai-parse failed: ${res.status}`);
+  }
   const { assignments } = await res.json();
   return assignments;
 }

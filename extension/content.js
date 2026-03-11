@@ -67,11 +67,27 @@ function parseDue(text) {
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 }
 
+export function extractEmbeddedDocIds(doc) {
+  const ids = [];
+  for (const iframe of doc.querySelectorAll('iframe')) {
+    const src = iframe.src || iframe.getAttribute('src') || '';
+    const m = src.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) ids.push(m[1]);
+  }
+  return ids;
+}
+
 // ── Runtime: runs in actual Chrome extension context ──
 if (typeof chrome !== 'undefined' && chrome.runtime) {
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'GET_PAGE_DATA') {
-      sendResponse(extractAssignments(document));
+      const base = extractAssignments(document);
+      const embeddedDocIds = extractEmbeddedDocIds(document);
+      sendResponse({
+        ...base,
+        googleDocIds: [...base.googleDocIds, ...embeddedDocIds],
+        pageText: null,
+      });
     }
     return true;
   });

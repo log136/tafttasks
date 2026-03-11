@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Taft School assignment dashboard — a multi-user web app where students aggregate assignments from Canvas LMS and manual sources into one place. Deployed on Netlify at https://graceful-cupcake-2e9b61.netlify.app/.
+Taft School assignment dashboard — a multi-user web app where students aggregate assignments from Canvas LMS and manual sources into one place. Deployed on Netlify at https://tafttasks.netlify.app/.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ Tables (all have `user_id` with RLS policies so users only see their own data):
 
 ```
 courses          id, user_id, name, teacher, color, canvas_course_id, canvas_url, note
-assignment_groups  id, course_id, user_id, name, sort_order
+assignment_groups  id, course_id, user_id, label, sort_order
 assignments      id, group_id, user_id, name, type, due, done, url, sort_order,
                  canvas_assignment_id
 user_settings    user_id, canvas_token (stores iCal URL, not a token — legacy column name)
