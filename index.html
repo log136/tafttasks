@@ -118,6 +118,97 @@
     /* ── Main ── */
     .main { padding: 24px 28px; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
+    /* ── App Body (sidebar layout) ── */
+    .app-body { display: flex; flex-direction: row; align-items: flex-start; gap: 0; }
+    .app-body .main { flex: 1; min-width: 0; }
+    @media (max-width: 768px) { .schedule-sidebar { display: none; } }
+
+    /* ── Schedule Sidebar ── */
+    .schedule-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: white;
+      border-left: 1px solid var(--border);
+      min-height: calc(100vh - 140px);
+      position: sticky;
+      top: 100px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+    .sched-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px;
+      background: #1a1a2e; color: white;
+      font-size: 0.78rem; font-weight: 700;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .sched-edit-btn {
+      background: none; border: none; color: rgba(255,255,255,0.7);
+      cursor: pointer; font-size: 0.85rem; padding: 2px 4px;
+      transition: color 0.15s;
+    }
+    .sched-edit-btn:hover, .sched-edit-btn.active { color: white; }
+    .sched-day-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      background: #f9fafb;
+      position: sticky; top: 36px; z-index: 1;
+    }
+    .sched-nav-arrow {
+      width: 22px; height: 22px;
+      background: var(--border); border-radius: 4px;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; color: #374151;
+      transition: background 0.15s;
+    }
+    .sched-nav-arrow:hover { background: #d1d5db; }
+    .sched-day-label { font-size: 0.78rem; font-weight: 700; text-align: center; }
+    .sched-day-sub   { font-size: 0.65rem; color: var(--muted); text-align: center; }
+    .sched-override-banner {
+      background: #fef3c7; color: #92400e;
+      padding: 5px 10px; font-size: 0.7rem; font-weight: 600;
+      border-bottom: 1px solid #fde68a;
+    }
+    .sched-block-row {
+      display: flex; align-items: center;
+      border-bottom: 1px solid #f3f4f6;
+      min-height: 46px;
+    }
+    .sched-block-row.current { background: #fff8f8; }
+    .sched-block-letter {
+      width: 32px; flex-shrink: 0;
+      text-align: center; font-weight: 800; font-size: 0.88rem;
+      color: white; padding: 10px 0; align-self: stretch;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sched-block-info { padding: 6px 8px; flex: 1; min-width: 0; }
+    .sched-block-course {
+      font-weight: 600; color: #111827;
+      font-size: 0.72rem; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .sched-block-row.current .sched-block-course { color: var(--taft-red); }
+    .sched-block-free { color: #9ca3af; font-style: italic; font-size: 0.72rem; }
+    .sched-block-time { font-size: 0.63rem; color: #9ca3af; margin-top: 1px; }
+    .sched-special-row {
+      display: flex; align-items: center;
+      border-bottom: 1px solid #f3f4f6;
+      background: #fafafa; min-height: 36px;
+    }
+    .sched-special-icon { width: 32px; text-align: center; font-size: 0.72rem; color: #9ca3af; flex-shrink: 0; }
+    .sched-special-info { padding: 5px 8px; flex: 1; }
+    .sched-special-label { font-size: 0.68rem; color: #6b7280; font-style: italic; }
+    .sched-special-time  { font-size: 0.62rem; color: #9ca3af; margin-top: 1px; }
+    .sched-empty { padding: 20px 12px; text-align: center; color: #9ca3af; font-size: 0.78rem; }
+    .sched-select {
+      width: 100%; font-size: 0.7rem; padding: 3px 4px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: white; color: #111827; outline: none;
+    }
+    .sched-select:focus { border-color: var(--taft-red); }
+
     /* ── Add Course Card ── */
     .add-course-card { background: white; border-radius: 14px; border: 2px dashed #d1d5db; padding: 28px; text-align: center; cursor: pointer; transition: all 0.15s; color: var(--muted); font-size: 0.9rem; font-weight: 500; }
     .add-course-card:hover { border-color: var(--taft-red); color: var(--taft-red); background: #fff8f8; }
@@ -480,9 +571,12 @@
     </div>
   </div>
 
-  <!-- MAIN -->
-  <div class="main" id="mainContent">
-    <div style="text-align:center;padding:80px 20px;color:#6b7280;font-size:0.92rem;">⏳ Loading your dashboard…</div>
+  <!-- MAIN + SIDEBAR -->
+  <div class="app-body">
+    <div class="main" id="mainContent">
+      <div style="text-align:center;padding:80px 20px;color:#6b7280;font-size:0.92rem;">⏳ Loading your dashboard…</div>
+    </div>
+    <div class="schedule-sidebar" id="scheduleSidebar"></div>
   </div>
 
   <!-- FOOTER -->
