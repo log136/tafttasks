@@ -18,6 +18,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (session) {
     const { data } = await sb.auth.setSession(session);
     if (data.user) {
+      // Cache iCal URL so background.js can sync without opening the app
+      const { data: settings } = await sb.from('user_settings').select('canvas_token').eq('user_id', data.user.id).single();
+      if (settings?.canvas_token) await chrome.storage.local.set({ icalUrl: settings.canvas_token });
       currentUser = data.user;
       currentSession = data.session;
     }

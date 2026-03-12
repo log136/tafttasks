@@ -2134,6 +2134,7 @@ async function afterAuth() {
     if (token) document.getElementById('syncCanvasBtn').style.display = 'inline-block';
 
     startAutoSync();
+    reSyncCanvas(true); // auto-sync on every dashboard load
   }
 }
 
