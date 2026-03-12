@@ -102,6 +102,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('loginBtn').addEventListener('click', doLogin);
   document.getElementById('importBtn').addEventListener('click', doImport);
+  document.getElementById('syncAllBtn').addEventListener('click', doSyncAll);
 
   render();
 });
@@ -302,6 +303,87 @@ async function fetchDocText(docId, driveFile = false) {
   const res = await fetch(`${BASE_URL}/api/doc-proxy?docId=${docId}`);
   if (!res.ok) throw new Error(`doc-proxy failed: ${res.status}`);
   return res.text();
+}
+
+// ── Sync All ──
+
+async function doSyncAll() {
+  const btn = document.getElementById('syncAllBtn');
+  const statusEl = document.getElementById('syncAllStatus');
+  btn.disabled = true;
+
+  try {
+    // 1. Use cached iCal URL or auto-discover it
+    let { icalUrl } = await chrome.storage.local.get('icalUrl');
+
+    if (!icalUrl) {
+      statusEl.textContent = 'Finding your Canvas calendar…';
+      icalUrl = await discoverICalUrl();
+      if (!icalUrl) {
+        statusEl.textContent = '✗ Could not find your Canvas calendar. Make sure you\'re logged into Canvas.';
+        btn.disabled = false;
+        return;
+      }
+      // Persist so future syncs and background.js can reuse it
+      await chrome.storage.local.set({ icalUrl });
+      await sb.from('user_settings').upsert({
+        user_id: currentUser.id,
+        canvas_token: icalUrl,
+      });
+    }
+
+    // 2. Trigger background sync and wait for it to finish
+    statusEl.textContent = 'Syncing all courses…';
+    const result = await chrome.runtime.sendMessage({ type: 'SYNC_NOW' });
+
+    if (result?.ok) {
+      statusEl.textContent = '✓ All courses synced!';
+    } else {
+      statusEl.textContent = '✗ Sync failed — ' + (result?.error || 'unknown error');
+    }
+  } catch (err) {
+    statusEl.textContent = '✗ ' + err.message;
+  }
+
+  btn.disabled = false;
+}
+
+// Opens a hidden Canvas calendar tab, waits for load, extracts the iCal feed URL.
+function discoverICalUrl() {
+  return new Promise(resolve => {
+    chrome.tabs.create({ url: 'https://taftschool.instructure.com/calendar', active: false }, tab => {
+      let resolved = false;
+
+      function finish(url) {
+        if (resolved) return;
+        resolved = true;
+        chrome.tabs.remove(tab.id).catch(() => {});
+        resolve(url || null);
+      }
+
+      function tryExtract() {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => document.querySelector('a[href*="/feeds/calendars/"]')?.href || null,
+        }, results => {
+          const url = results?.[0]?.result;
+          if (url) finish(url);
+        });
+      }
+
+      const listener = (tabId, info) => {
+        if (tabId !== tab.id || info.status !== 'complete') return;
+        chrome.tabs.onUpdated.removeListener(listener);
+        tryExtract();
+        // Retry once after 1.5 s in case Canvas renders the link via JS
+        setTimeout(tryExtract, 1500);
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+
+      // Hard timeout after 12 s
+      setTimeout(() => finish(null), 12000);
+    });
+  });
 }
 
 async function aiParseDoc(docText) {

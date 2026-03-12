@@ -37,6 +37,16 @@ chrome.alarms.onAlarm.addListener(alarm => {
   }
 });
 
+// Allow the popup to trigger an immediate sync
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'SYNC_NOW') {
+    syncFromICal()
+      .then(() => sendResponse({ ok: true }))
+      .catch(err => sendResponse({ ok: false, error: err.message }));
+    return true; // keep message channel open for async response
+  }
+});
+
 // ── Main sync ──
 
 async function syncFromICal() {
