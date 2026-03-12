@@ -436,7 +436,7 @@
 <!-- ══════════════════════════════════════════ -->
 <!--  LANDING SCREEN                           -->
 <!-- ══════════════════════════════════════════ -->
-<div id="landingScreen" class="screen active">
+<div id="landingScreen" class="screen">
   <div class="landing-page">
 
     <!-- Nav -->
@@ -2111,7 +2111,7 @@ async function init() {
     currentUser = session.user;
     await afterAuth();
   } else {
-    showScreen('authScreen');
+    showScreen('landingScreen');
   }
 
   // Listen for auth changes (e.g. token refresh, sign out from another tab)
