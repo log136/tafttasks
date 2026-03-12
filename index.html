@@ -1134,6 +1134,7 @@ async function handleAuthSubmit() {
 }
 
 async function signOut() {
+  stopAutoSync();
   await sb.auth.signOut();
   currentUser = null; COURSES = []; state = { done: {} };
   const adminBtn = document.getElementById('adminBtn');
@@ -2131,6 +2132,8 @@ async function afterAuth() {
     // Show Sync Canvas button if user has a stored token
     const token = await loadCanvasToken();
     if (token) document.getElementById('syncCanvasBtn').style.display = 'inline-block';
+
+    startAutoSync();
   }
 }
 
@@ -2643,10 +2646,10 @@ function parseSpanishDoc(text) {
 }
 
 // ── Re-sync from dashboard ──
-async function reSyncCanvas() {
+async function reSyncCanvas(silent = false) {
   const icalUrl = await loadICalUrl();
   if (!icalUrl) {
-    alert('No calendar feed saved. Go through the setup wizard to reconnect.');
+    if (!silent) alert('No calendar feed saved. Go through the setup wizard to reconnect.');
     return;
   }
 
@@ -2691,11 +2694,26 @@ async function reSyncCanvas() {
     updateMissingCount();
     setSyncStatus('ok');
   } catch (err) {
-    alert('Sync failed: ' + err.message);
+    if (!silent) alert('Sync failed: ' + err.message);
     setSyncStatus('offline');
   }
 
   btn.textContent = '↻ Sync Canvas'; btn.disabled = false;
+}
+
+// ─────────────────────────────────────────────
+//  AUTO-SYNC
+// ─────────────────────────────────────────────
+let autoSyncTimer = null;
+const AUTO_SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
+function startAutoSync() {
+  stopAutoSync();
+  autoSyncTimer = setInterval(() => reSyncCanvas(true), AUTO_SYNC_INTERVAL);
+}
+
+function stopAutoSync() {
+  if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
 }
 </script>
 </body>
