@@ -1,20 +1,32 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Project Overview
 
-Taft School assignment dashboard — a multi-user web app where students aggregate assignments from Canvas LMS and manual sources into one place. Deployed on Netlify at https://tafttasks.netlify.app/.
+Taft School assignment dashboard — a multi-user web app where students aggregate assignments from Canvas LMS and manual sources into one place. Deployed on Cloudflare Pages at https://tafttasks.pages.dev/.
 
 ## Architecture
 
 **No build step.** The entire frontend is `index.html` — vanilla JS, HTML, and CSS in a single file. There is no `package.json`, no bundler, no framework. Supabase JS is loaded from CDN.
 
-**Netlify Functions** in `netlify/functions/` are the only server-side code:
+**Cloudflare Pages Functions** in `functions/api/` are the only server-side code:
 - `ical-proxy.js` — CORS proxy for Canvas iCal calendar feeds (only allows `*.instructure.com/feeds/calendars/` URLs)
 - `doc-proxy.js` — CORS proxy for public Google Docs (accepts a `docId`, exports as plain text via Google's export URL)
+- `ai-parse.js` — Calls Claude Haiku to extract structured assignments from Google Doc text. Requires a valid Supabase Bearer token in the `Authorization` header.
 
-Functions are deployed automatically by Netlify when pushed. No local function runner is set up.
+Functions use Cloudflare Pages Functions format (`onRequestGet`, `onRequestPost`, `onRequestOptions`).
+Environment variables are set in Cloudflare Pages → Settings → Environment Variables:
+- `ANTHROPIC_API_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+## Extension
+
+The Chrome MV3 extension lives in `extension/`. Key points:
+- `manifest.json` — no `"type": "module"` in content_scripts (Chrome MV3 doesn't support it)
+- `content.js` — passive message listener, wrapped in IIFE, no ES module exports
+- `popup.js` — primary scraping happens via `chrome.scripting.executeScript` inline function. Uses `BASE_URL = 'https://tafttasks.pages.dev'` for all API calls. Sends `Authorization: Bearer <token>` on ai-parse requests.
 
 ## Supabase Data Model
 
@@ -35,6 +47,7 @@ user_settings    user_id, canvas_token (stores iCal URL, not a token — legacy 
 - **`upsert` with `onConflict` does not work on partial indexes** (indexes with a `WHERE` clause). Use plain `insert` when the conflict target is a partial index. Use `upsert` only for `user_settings` (which has a full unique constraint on `user_id`).
 - **`assignment_groups` not `groups`** — the Supabase table is `assignment_groups`. Don't use `sb.from('groups')`.
 - **`canvas_token` column stores the iCal URL**, not a Canvas API token. Taft School blocks personal API token generation, so the app uses the Canvas iCal calendar feed instead.
+- **Assignment deduplication** uses `canvas_assignment_id` (preferred) or name fallback. Do not rely on name-only dedup.
 
 ## Three Screens
 
@@ -47,14 +60,14 @@ user_settings    user_id, canvas_token (stores iCal URL, not a token — legacy 
 ## iCal Import Flow
 
 1. User pastes their Canvas calendar feed URL into the wizard
-2. `fetchICalCourses()` fetches it via `ical-proxy`, parses with `parseICal()`, groups events by Canvas course ID (extracted from assignment URLs matching `/courses/(\d+)/assignments/(\d+)`)
+2. `fetchICalCourses()` fetches it via `/api/ical-proxy`, parses with `parseICal()`, groups events by Canvas course ID
 3. User selects which courses to import
 4. `importSelectedICalCourses()` creates `courses` + `assignment_groups` + `assignments` rows
 
 ## Taft Templates
 
-`TAFT_TEMPLATES` constant holds hardcoded Stats assignment data (Chapters 6–12). The Spanish IV template fetches live from a public Google Doc via `doc-proxy`, then `parseSpanishDoc()` parses "Bloque A - Day M/D" headers and `*` bullet assignments.
+`TAFT_TEMPLATES` constant holds hardcoded Stats assignment data (Chapters 6–12). The Spanish IV template fetches live from a public Google Doc via `/api/doc-proxy`, then `parseSpanishDoc()` parses "Bloque A - Day M/D" headers and `*` bullet assignments.
 
 ## Deployment
 
-Push to the connected GitHub repo — Netlify auto-deploys. No build command needed (`netlify.toml` sets `publish = "."`).
+Push to https://github.com/log136/taft-dashboard — Cloudflare Pages auto-deploys. No build command needed (publish directory is `/`).

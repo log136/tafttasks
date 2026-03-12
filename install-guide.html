@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaftTasks — Getting Started</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; }
+    header { background: #8B0000; color: white; padding: 48px 24px 40px; text-align: center; }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+    header p { margin-top: 8px; font-size: 1.05rem; opacity: 0.85; }
+    .container { max-width: 680px; margin: 48px auto; padding: 0 24px 80px; }
+    .step { background: white; border-radius: 12px; padding: 28px 32px; margin-bottom: 16px; display: flex; gap: 24px; align-items: flex-start; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .step-num { background: #8B0000; color: white; font-size: 0.9rem; font-weight: 700; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .step-body h2 { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; }
+    .step-body p { font-size: 0.95rem; color: #444; }
+    .step-body a { color: #8B0000; text-decoration: none; font-weight: 500; }
+    .step-body a:hover { text-decoration: underline; }
+    .step-body code { background: #f0f0f0; padding: 2px 7px; border-radius: 4px; font-size: 0.88rem; font-family: "SF Mono", "Fira Code", monospace; }
+    .tip { background: #fff8f0; border-left: 3px solid #e87722; border-radius: 0 8px 8px 0; padding: 14px 18px; margin-top: 10px; font-size: 0.9rem; color: #555; }
+    .tip strong { color: #c45f00; }
+    .divider { text-align: center; color: #bbb; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; margin: 32px 0 24px; }
+    .done-card { background: #8B0000; color: white; border-radius: 12px; padding: 32px; text-align: center; }
+    .done-card h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+    .done-card p { opacity: 0.85; font-size: 0.95rem; margin-bottom: 20px; }
+    .btn { display: inline-block; background: white; color: #8B0000; font-weight: 600; font-size: 0.95rem; padding: 12px 28px; border-radius: 8px; text-decoration: none; }
+    .faq { background: white; border-radius: 12px; padding: 28px 32px; margin-top: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .faq h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; color: #1a1a1a; }
+    .faq p { font-size: 0.9rem; color: #555; margin-bottom: 18px; }
+    .faq p:last-child { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>TaftTasks</h1>
+  <p>Get set up in under 5 minutes</p>
+</header>
+
+<div class="container">
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h2>Create your account</h2>
+      <p>Go to <a href="https://tafttasks.pages.dev" target="_blank">tafttasks.pages.dev</a> and sign up with your Taft email address. You'll get a confirmation email — click the link inside to activate your account.</p>
+      <div class="tip"><strong>Note:</strong> Use your <code>@taftschool.org</code> email so your account is tied to Taft.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h2>Install the Chrome extension</h2>
+      <p>Open the <a href="https://chrome.google.com/webstore" target="_blank">Chrome Web Store</a> and search for <strong>TaftTasks</strong>. Click <em>Add to Chrome</em>, then <em>Add extension</em> to confirm. The TaftTasks icon will appear in your toolbar.</p>
+      <div class="tip"><strong>Tip:</strong> Pin the extension so it's always visible — click the puzzle piece icon in the toolbar, then the pin next to TaftTasks.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h2>Sign in to the extension</h2>
+      <p>Click the TaftTasks icon in your toolbar. Enter the email and password you used in Step 1. You only need to do this once — the extension stays signed in.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h2>Go to a Canvas Modules page</h2>
+      <p>Open <a href="https://taftschool.instructure.com" target="_blank">Canvas</a>, navigate to any course, and click <strong>Modules</strong> in the left sidebar.</p>
+      <div class="tip"><strong>Repeat for each course:</strong> You'll import one course at a time — takes about 10 seconds per course.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <h2>Import your assignments</h2>
+      <p>Click the TaftTasks icon. The extension will detect your assignments and show a summary. Click <strong>Import to Dashboard</strong>. Done — your assignments are now in TaftTasks.</p>
+    </div>
+  </div>
+
+  <div class="divider">✓ You're done</div>
+
+  <div class="done-card">
+    <h2>Open your dashboard</h2>
+    <p>All your assignments, due dates, and progress in one place. Check off items as you finish them.</p>
+    <a class="btn" href="https://tafttasks.pages.dev" target="_blank">Open TaftTasks →</a>
+  </div>
+
+  <div class="faq" style="margin-top: 32px;">
+    <h3>Do I need to re-import after Canvas updates?</h3>
+    <p>Yes — visit the Modules page and click Import again to pick up new assignments. Existing items won't be duplicated.</p>
+
+    <h3>Will this work on any Canvas course?</h3>
+    <p>Yes, as long as the course uses the Modules view. If a teacher uses a different layout, some assignments may not be detected.</p>
+
+    <h3>Is my data private?</h3>
+    <p>Your assignments are stored in your personal account only. No one else can see your data.</p>
+
+    <h3>Something's not working</h3>
+    <p>Email <a href="mailto:lascott@taftschool.org" style="color:#8B0000;">lascott@taftschool.org</a> and I'll fix it.</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -2192,7 +2192,7 @@ async function loadICalUrl() {
 
 // Fetch iCal via the proxy function
 async function fetchICalText(icalUrl) {
-  const proxyUrl = `/ical-proxy?url=${encodeURIComponent(icalUrl)}`;
+  const proxyUrl = `/api/ical-proxy?url=${encodeURIComponent(icalUrl)}`;
   const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(await res.text());
   return res.text();
@@ -2573,7 +2573,7 @@ async function fetchAndImportSpanishDoc() {
   const docId = '1Pm852EkT3V5Sk2rmloqnHuU0lcqFTHNIHYvaRPz2Kpg';
   statusEl.textContent = 'Fetching Spanish IV assignment sheet…';
 
-  const res = await fetch(`/doc-proxy?docId=${docId}`);
+  const res = await fetch(`/api/doc-proxy?docId=${docId}`);
   if (!res.ok) throw new Error(`doc-proxy returned ${res.status}`);
   const text = await res.text();
 

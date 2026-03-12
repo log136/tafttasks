@@ -1,48 +1,60 @@
-// Supabase loaded from CDN inline — inject it dynamically
 const SUPABASE_URL = 'https://pupqkuunekeeyfnfjpde.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1cHFrdXVuZWtlZXlmbmZqcGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTM2NzEsImV4cCI6MjA4ODU4OTY3MX0.ktUUhaqi3BO5wAr8kWaTqvoQ1fxRlitvD9hpIUXOUdU';
-const CF_BASE = 'https://tafttasks.pages.dev';
+
+// ── UPDATE THIS to your Cloudflare Pages domain ──
+// e.g. 'https://tafttasks.pages.dev' or your custom domain
+const BASE_URL = 'https://tafttasks.pages.dev';
 
 let sb = null;
 let currentUser = null;
-let pageData = null; // { assignments, googleDocIds } from content script
+let currentSession = null;
+let pageData = null;
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded', async () => {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Restore session from chrome.storage
   const { session } = await chrome.storage.local.get('session');
   if (session) {
     const { data } = await sb.auth.setSession(session);
     if (data.user) {
       currentUser = data.user;
+      currentSession = data.session;
     }
   }
 
-  // Scan the live page DOM directly
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
-        // Extract Canvas module items (supports both selector variants)
         const assignments = [];
+        const googleDocIds = [];
+        const seen = new Set();
+
+        // Collect assignment anchors from both selector variants
         const itemAnchors = [
           ...document.querySelectorAll('.ig-row[data-module-type] .ig-title a'),
           ...document.querySelectorAll('li.context_module_item a.ig-title'),
         ];
+
         for (const anchor of itemAnchors) {
           const href = anchor.getAttribute('href') || '';
           const fullUrl = href.startsWith('http') ? href : location.origin + href;
+
           const gdoc = fullUrl.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
-          if (gdoc) continue; // handled below
+          if (gdoc) {
+            if (!seen.has(gdoc[1])) { seen.add(gdoc[1]); googleDocIds.push({ id: gdoc[1], driveFile: false }); }
+            continue;
+          }
+
           const li = anchor.closest('li.context_module_item');
           const typeClass = li?.classList;
           let type = 'homework';
           if (typeClass?.contains('quiz')) type = 'quiz';
           else if (typeClass?.contains('discussion_topic')) type = 'classwork';
           else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment')) type = 'reading';
+
           const dueEl = li?.querySelector('.due_date_display');
           let due = null;
           if (dueEl) {
@@ -50,7 +62,10 @@ window.addEventListener('DOMContentLoaded', async () => {
             const d = new Date(cleaned);
             if (!isNaN(d)) due = d.toISOString().slice(0, 10);
           }
+
+          // Extract Canvas course and assignment IDs from the URL path
           const idMatch = href.match(/\/courses\/(\d+)\/(?:assignments|quizzes)\/(\d+)/);
+
           assignments.push({
             name: anchor.textContent.trim(),
             url: fullUrl,
@@ -60,22 +75,21 @@ window.addEventListener('DOMContentLoaded', async () => {
             canvasAssignmentId: idMatch ? parseInt(idMatch[2]) : null,
           });
         }
-        // Extract Google Doc and Drive file IDs from links and iframes
-        const googleDocIds = [];   // { id, driveFile }
-        const seen = new Set();
-        const addDoc = (src, driveFile = false) => {
-          const m = driveFile
-            ? (src || '').match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
-            : (src || '').match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
-          if (m && !seen.has(m[1])) { seen.add(m[1]); googleDocIds.push({ id: m[1], driveFile }); }
-        };
-        document.querySelectorAll('a[href*="docs.google.com/document"]').forEach(a => addDoc(a.href, false));
+
+        // Collect embedded Google Doc iframes
         document.querySelectorAll('iframe').forEach(f => {
           const src = f.src || f.getAttribute('src') || '';
-          addDoc(src, false);
-          addDoc(src, true);
+          const m = src.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+          if (m && !seen.has(m[1])) { seen.add(m[1]); googleDocIds.push({ id: m[1], driveFile: false }); }
         });
-        return { assignments, googleDocIds };
+
+        // Pull course ID and name directly from the URL and page — more reliable than tab title
+        const courseIdFromUrl = location.pathname.match(/\/courses\/(\d+)/)?.[1] ?? null;
+        const courseNameFromPage = document.querySelector('.ic-app-crumbs li:nth-child(2) a')?.textContent?.trim()
+          ?? document.title.replace(/\s*[-|].*$/, '').trim()
+          ?? null;
+
+        return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage };
       },
     });
     pageData = result.result;
@@ -133,6 +147,7 @@ async function doLogin() {
 
   await chrome.storage.local.set({ session: data.session });
   currentUser = data.user;
+  currentSession = data.session;
   render();
 }
 
@@ -145,16 +160,14 @@ async function doImport() {
   try {
     let allAssignments = [...pageData.assignments];
 
-    // Fetch + AI-parse any Google Docs / Drive files
     for (const doc of pageData.googleDocIds) {
-      statusEl.textContent = `Parsing document…`;
+      statusEl.textContent = 'Parsing document…';
       const docText = await fetchDocText(doc.id, doc.driveFile);
       const aiAssignments = await aiParseDoc(docText);
       allAssignments = allAssignments.concat(
         aiAssignments.map(a => ({ ...a, canvasCourseId: null, canvasAssignmentId: null }))
       );
     }
-
 
     if (!allAssignments.length) {
       statusEl.textContent = 'No assignments found to import.';
@@ -164,19 +177,31 @@ async function doImport() {
 
     statusEl.textContent = `Saving ${allAssignments.length} assignments…`;
 
-    // Group by canvasCourseId (null = from Google Doc)
     const courseGroups = groupByCourse(allAssignments);
     let saved = 0;
 
     for (const [courseId, items] of Object.entries(courseGroups)) {
       const course = await getOrCreateCourse(courseId, items[0]);
       const group = await getOrCreateGroup(course.id, 'Imported');
+
+      // ── Improved deduplication: check both name and canvas_assignment_id ──
       const { data: existing } = await sb.from('assignments')
-        .select('name').eq('group_id', group.id).eq('user_id', currentUser.id);
+        .select('name, canvas_assignment_id')
+        .eq('group_id', group.id)
+        .eq('user_id', currentUser.id);
+
       const existingNames = new Set((existing || []).map(a => a.name));
+      const existingCanvasIds = new Set(
+        (existing || []).filter(a => a.canvas_assignment_id).map(a => a.canvas_assignment_id)
+      );
 
       const rows = items
-        .filter(a => !existingNames.has(a.name))
+        .filter(a => {
+          // Prefer ID-based dedup for Canvas assignments; fall back to name for AI-parsed ones
+          if (a.canvasAssignmentId && existingCanvasIds.has(a.canvasAssignmentId)) return false;
+          if (!a.canvasAssignmentId && existingNames.has(a.name)) return false;
+          return true;
+        })
         .map((a, i) => ({
           group_id: group.id,
           user_id: currentUser.id,
@@ -186,7 +211,7 @@ async function doImport() {
           url: a.url || null,
           canvas_assignment_id: a.canvasAssignmentId || null,
           done: false,
-          sort_order: existingNames.size + i,
+          sort_order: (existing?.length ?? 0) + i,
         }));
 
       if (rows.length > 0) {
@@ -220,17 +245,16 @@ function groupByCourse(assignments) {
 }
 
 async function getOrCreateCourse(canvasCourseId, sampleAssignment) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  // Use the course name scraped from the page breadcrumb (more reliable than tab title)
   const courseName = canvasCourseId === 'google-doc'
-    ? (tab.title?.replace(/\s*[-|].*$/, '').trim() || 'Imported Course')
-    : (tab.title?.replace(/\s*[-|].*$/, '').trim() || `Course ${canvasCourseId}`);
+    ? (pageData?.courseNameFromPage || 'Imported Course')
+    : (pageData?.courseNameFromPage || `Course ${canvasCourseId}`);
 
   if (canvasCourseId !== 'google-doc') {
     const { data } = await sb.from('courses')
       .select('*').eq('user_id', currentUser.id).eq('canvas_course_id', parseInt(canvasCourseId)).single();
     if (data) return data;
   } else {
-    // Match Google Doc courses by name to prevent duplicates
     const { data } = await sb.from('courses')
       .select('*').eq('user_id', currentUser.id).eq('name', courseName).is('canvas_course_id', null).maybeSingle();
     if (data) return data;
@@ -268,30 +292,28 @@ async function getOrCreateGroup(courseId, groupName) {
 
 async function fetchDocText(docId, driveFile = false) {
   if (driveFile) {
-    // Fetch directly from browser — user is already authenticated with Google
     const res = await fetch(`https://docs.google.com/document/d/${docId}/export?format=txt`);
     if (!res.ok) throw new Error(`Drive export failed: ${res.status}`);
     return res.text();
   }
-  const res = await fetch(`${CF_BASE}/doc-proxy?docId=${docId}`);
+  const res = await fetch(`${BASE_URL}/api/doc-proxy?docId=${docId}`);
   if (!res.ok) throw new Error(`doc-proxy failed: ${res.status}`);
   return res.text();
 }
 
 async function aiParseDoc(docText) {
-  const { data: { session } } = await sb.auth.getSession();
-  const res = await fetch(`${CF_BASE}/ai-parse`, {
+  // Send the user's auth token so the function can verify the caller is a real user
+  const token = currentSession?.access_token;
+
+  const res = await fetch(`${BASE_URL}/api/ai-parse`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ docText }),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `ai-parse failed: ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`ai-parse failed: ${res.status}`);
   const { assignments } = await res.json();
   return assignments;
 }

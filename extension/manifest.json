@@ -13,8 +13,7 @@
     {
       "matches": ["*://*.instructure.com/*"],
       "js": ["content.js"],
-      "run_at": "document_idle",
-      "type": "module"
+      "run_at": "document_idle"
     }
   ],
   "action": {
