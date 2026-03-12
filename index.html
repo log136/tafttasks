@@ -43,6 +43,12 @@
     .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .auth-toggle { text-align: center; margin-top: 16px; font-size: 0.82rem; color: var(--muted); }
     .auth-toggle a { color: var(--taft-red); cursor: pointer; text-decoration: underline; }
+    .auth-install-link { text-align: center; margin-top: 14px; font-size: 0.8rem; }
+    .auth-install-link a { color: var(--muted); cursor: pointer; text-decoration: none; }
+    .auth-install-link a:hover { color: var(--taft-red); }
+    .install-step { margin-bottom: 20px; }
+    .install-step h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 5px; color: var(--text); }
+    .install-step p { font-size: 0.85rem; color: #374151; line-height: 1.6; }
     .auth-error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 14px; display: none; }
     .auth-error.show { display: block; }
 
@@ -399,6 +405,38 @@
         <span id="authToggleText">Don't have an account?</span>
         <a onclick="toggleAuthMode()" id="authToggleLink">Sign up</a>
       </div>
+      <div class="auth-install-link">
+        <a onclick="showScreen('installGuideScreen')">How to install →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!--  INSTALL GUIDE SCREEN                     -->
+<!-- ══════════════════════════════════════════ -->
+<div id="installGuideScreen" class="screen">
+  <div class="auth-page">
+    <div class="auth-card" style="max-width:540px">
+      <div class="auth-logo">
+        <h1>📚 How to Install</h1>
+        <p>Get set up in a few minutes</p>
+      </div>
+      <div style="text-align:left;margin-top:8px">
+        <div class="install-step">
+          <h3>Step 1 — Create an account</h3>
+          <p>On the login screen, click <strong>Sign up</strong> and register with your Taft email address and a password of your choice.</p>
+        </div>
+        <div class="install-step">
+          <h3>Step 2 — Import from Canvas</h3>
+          <p>After signing in, open the <a href="https://taftschool.instructure.com/calendar" target="_blank" style="color:var(--taft-red)">Canvas Calendar</a>, then click <strong>Calendar Feed</strong> at the bottom-left of the page. Copy that URL and paste it into the setup wizard.</p>
+        </div>
+        <div class="install-step">
+          <h3>Step 3 — Install the Chrome Extension <span style="font-weight:400;color:var(--muted)">(optional)</span></h3>
+          <p>The extension lets you import assignments directly from Canvas course module pages with one click. Install it from the Chrome Web Store, then navigate to any Canvas course page and click the extension icon to sync assignments.</p>
+        </div>
+      </div>
+      <button class="auth-btn" style="margin-top:8px" onclick="showScreen('authScreen')">← Back to Login</button>
     </div>
   </div>
 </div>
