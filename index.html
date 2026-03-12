@@ -2163,8 +2163,19 @@ async function init() {
   }
 
   // Listen for auth changes (e.g. token refresh, sign out from another tab)
-  sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' && !session) showScreen('authScreen');
+  // Also handles mobile Safari where getSession() returns null on first load
+  // and the session arrives asynchronously via SIGNED_IN / TOKEN_REFRESHED
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT' && !session) {
+      showScreen('authScreen');
+    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+      currentUser = session.user;
+      // Only run afterAuth if the main screen isn't already visible
+      if (document.getElementById('mainScreen').style.display === 'none' ||
+          document.getElementById('mainScreen').style.display === '') {
+        await afterAuth();
+      }
+    }
   });
 }
 
