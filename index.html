@@ -283,6 +283,9 @@
     .assignment-link:hover { color: var(--taft-red); background: #fee2e2; }
     .delete-btn { font-size: 0.7rem; color: #e5e7eb; cursor: pointer; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity 0.15s; background: none; border: none; }
     .assignment-row:hover .delete-btn { opacity: 1; color: #dc2626; }
+    .edit-btn { font-size: 0.75rem; color: #e5e7eb; cursor: pointer; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity 0.15s; background: none; border: none; }
+    .assignment-row:hover .edit-btn { opacity: 1; color: #9ca3af; }
+    .edit-btn:hover { background: #eff6ff; color: #3b82f6 !important; }
 
     /* ── Add Assignment ── */
     .add-row { padding: 8px 4px; }
@@ -621,6 +624,44 @@
           <input type="hidden" id="editCourseColor" value="#c0392b">
         </div>
         <button class="modal-submit-btn" onclick="saveEditCourse()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT ASSIGNMENT MODAL -->
+  <div class="modal-overlay" id="editAssignmentModal" onclick="if(event.target===this)closeEditAssignmentModal()">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <div><h2>Edit Assignment</h2></div>
+        <button class="modal-close" onclick="closeEditAssignmentModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editAssignmentId">
+        <input type="hidden" id="editAssignmentCourseId">
+        <input type="hidden" id="editAssignmentGroupIdx">
+        <div class="modal-form-field">
+          <label>Assignment Name *</label>
+          <input type="text" id="editAssignmentName" placeholder="Assignment name…">
+        </div>
+        <div class="modal-form-field">
+          <label>Due Date</label>
+          <input type="date" id="editAssignmentDue">
+        </div>
+        <div class="modal-form-field">
+          <label>Type</label>
+          <select id="editAssignmentType">
+            <option value="homework">Homework</option>
+            <option value="reading">Reading</option>
+            <option value="project">Project</option>
+            <option value="quiz">Quiz/Test</option>
+            <option value="classwork">Classwork</option>
+          </select>
+        </div>
+        <div class="modal-form-field">
+          <label>URL (optional)</label>
+          <input type="url" id="editAssignmentUrl" placeholder="https://…">
+        </div>
+        <button class="modal-submit-btn" onclick="saveEditAssignment()">Save Changes</button>
       </div>
     </div>
   </div>
@@ -1133,6 +1174,60 @@ async function saveEditCourse() {
 }
 
 
+// ─────────────────────────────────────────────
+//  EDIT ASSIGNMENT
+// ─────────────────────────────────────────────
+function openEditAssignmentModal(id, courseId, groupIdx) {
+  const course = COURSES.find(c => c.id === courseId);
+  if (!course) return;
+  const item = course.groups[groupIdx].items.find(i => i.id === id);
+  if (!item) return;
+
+  document.getElementById('editAssignmentId').value = id;
+  document.getElementById('editAssignmentCourseId').value = courseId;
+  document.getElementById('editAssignmentGroupIdx').value = groupIdx;
+  document.getElementById('editAssignmentName').value = item.name;
+  document.getElementById('editAssignmentDue').value = item.due ? item.due.slice(0, 10) : '';
+  document.getElementById('editAssignmentType').value = item.type || 'homework';
+  document.getElementById('editAssignmentUrl').value = item.url || '';
+
+  document.getElementById('editAssignmentModal').classList.add('open');
+  setTimeout(() => document.getElementById('editAssignmentName').focus(), 50);
+}
+
+function closeEditAssignmentModal() {
+  document.getElementById('editAssignmentModal').classList.remove('open');
+}
+
+async function saveEditAssignment() {
+  const id       = document.getElementById('editAssignmentId').value;
+  const courseId = document.getElementById('editAssignmentCourseId').value;
+  const groupIdx = parseInt(document.getElementById('editAssignmentGroupIdx').value);
+  const name     = document.getElementById('editAssignmentName').value.trim();
+  if (!name) { alert('Assignment name is required.'); return; }
+  const dateVal  = document.getElementById('editAssignmentDue').value;
+  const due      = dateVal ? dateVal + 'T04:59:00Z' : null;
+  const type     = document.getElementById('editAssignmentType').value;
+  const url      = document.getElementById('editAssignmentUrl').value.trim() || null;
+
+  const btn = document.querySelector('#editAssignmentModal .modal-submit-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  const { error } = await sb.from('assignments').update({ name, due, type, url }).eq('id', id);
+
+  btn.textContent = 'Save Changes'; btn.disabled = false;
+  if (error) { alert('Error saving: ' + error.message); return; }
+
+  const course = COURSES.find(c => c.id === courseId);
+  const item = course.groups[groupIdx].items.find(i => i.id === id);
+  if (item) { item.name = name; item.due = due; item.type = type; item.url = url; }
+
+  closeEditAssignmentModal();
+  renderAll();
+  setSyncStatus('ok');
+}
+
+
 async function addCourseFromDashboard() {
   const name = document.getElementById('addCourseName').value.trim();
   if (!name) { alert('Course name is required.'); return; }
@@ -1240,6 +1335,7 @@ function renderItem(item, courseId, groupIdx) {
         </div>
       </div>
       ${item.url ? `<a class="assignment-link" href="${item.url}" target="_blank" title="Open in Canvas">↗</a>` : ''}
+      <button class="edit-btn" onclick="openEditAssignmentModal('${item.id}','${courseId}',${groupIdx})" title="Edit">✎</button>
       <button class="delete-btn" onclick="deleteItem('${item.id}','${courseId}',${groupIdx})" title="Delete">✕</button>
     </div>`;
 }

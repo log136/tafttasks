@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Taft Tasks</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      line-height: 1.7;
+      padding: 40px 16px 80px;
+    }
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 48px 48px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    @media (max-width: 600px) { .container { padding: 32px 24px; } }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+    .brand-dot {
+      width: 24px; height: 24px;
+      background: #8B0000;
+      border-radius: 50%;
+    }
+    .brand-name { font-size: 1.1rem; font-weight: 700; color: #8B0000; }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .updated {
+      font-size: 0.82rem;
+      color: #6b7280;
+      margin-bottom: 32px;
+    }
+    h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-top: 32px;
+      margin-bottom: 10px;
+      color: #1a1a2e;
+    }
+    p { font-size: 0.92rem; color: #374151; margin-bottom: 12px; }
+    ul {
+      font-size: 0.92rem;
+      color: #374151;
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    ul li { margin-bottom: 6px; }
+    a { color: #8B0000; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 36px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <span class="brand-name">Taft Tasks</span>
+    </div>
+
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: March 11, 2026</p>
+
+    <p>This Privacy Policy describes how the <strong>Taft Tasks Chrome Extension</strong> and the <strong>Taft Tasks web app</strong> (collectively, "the Service") collect, use, and store information. The Service is intended for students at The Taft School.</p>
+
+    <h2>1. Information We Collect</h2>
+    <p>The Chrome extension reads the following data from Canvas pages you visit:</p>
+    <ul>
+      <li>Assignment names, due dates, types, and Canvas URLs</li>
+      <li>Canvas course IDs and assignment IDs embedded in page URLs</li>
+      <li>Google Doc IDs linked from Canvas pages (used to fetch assignment content)</li>
+    </ul>
+    <p>The web app additionally stores:</p>
+    <ul>
+      <li>Your email address and password (via Supabase Auth)</li>
+      <li>Your Canvas iCal calendar feed URL</li>
+      <li>Assignment completion status and custom assignments you create manually</li>
+      <li>Course names, teacher names, and color preferences</li>
+    </ul>
+
+    <h2>2. How We Use Your Information</h2>
+    <p>All collected data is used solely to operate the assignment dashboard:</p>
+    <ul>
+      <li>Canvas assignment data is imported into your personal dashboard so you can track and manage your work in one place.</li>
+      <li>Google Doc content is fetched and parsed to extract reading assignments from linked documents.</li>
+      <li>Your completion status and custom assignments are saved so your dashboard persists across sessions.</li>
+    </ul>
+    <p>We do not use your data for advertising, analytics, or any purpose other than providing the Service to you.</p>
+
+    <h2>3. Data Storage</h2>
+    <p>Your data is stored in <strong>Supabase</strong>, a managed database platform. All records are associated with your user account and protected by row-level security (RLS) policies — meaning you can only access your own data. Data is stored in the United States.</p>
+    <p>The Chrome extension stores your login session locally in <code>chrome.storage.local</code> so you remain signed in between uses. This data never leaves your device except to authenticate with Supabase.</p>
+
+    <h2>4. Data Sharing</h2>
+    <p>We do not sell, rent, or share your personal data with any third parties. The only external services the Service communicates with are:</p>
+    <ul>
+      <li><strong>Supabase</strong> — database and authentication</li>
+      <li><strong>Canvas (Instructure)</strong> — to read assignment data from pages you visit (extension only)</li>
+      <li><strong>Google Docs</strong> — to fetch content from public document links found on Canvas pages</li>
+    </ul>
+
+    <h2>5. Permissions Used by the Extension</h2>
+    <p>The Chrome extension requests the following permissions:</p>
+    <ul>
+      <li><strong>activeTab / scripting</strong> — to read assignment data from the Canvas page you are currently viewing</li>
+      <li><strong>storage</strong> — to save your login session locally so you don't have to sign in every time</li>
+    </ul>
+    <p>The extension does not run in the background, does not track browsing history, and only reads data from Canvas pages when you explicitly open the extension popup.</p>
+
+    <h2>6. Data Retention &amp; Deletion</h2>
+    <p>Your data is retained as long as you have an account. You can delete individual assignments and courses at any time from within the dashboard. To request full deletion of your account and all associated data, contact us at the email address below.</p>
+
+    <h2>7. Children's Privacy</h2>
+    <p>The Service is designed for high school students. We do not knowingly collect personal information from children under 13. If you believe a child under 13 has submitted data, please contact us and we will delete it promptly.</p>
+
+    <h2>8. Changes to This Policy</h2>
+    <p>We may update this policy from time to time. The "Last updated" date at the top of this page reflects the most recent revision. Continued use of the Service after changes are posted constitutes your acceptance of the updated policy.</p>
+
+    <hr>
+
+    <h2>Contact</h2>
+    <p>If you have questions about this privacy policy, please reach out to the developer through the Taft School.</p>
+  </div>
+</body>
+</html>
