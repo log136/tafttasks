@@ -415,6 +415,22 @@
     .landing-step-title { font-size: 0.88rem; font-weight: 700; color: #111; margin-bottom: 6px; letter-spacing: -0.01em; }
     .landing-step-desc { font-size: 0.76rem; color: #6b6b6b; line-height: 1.55; max-width: 120px; }
 
+    .landing-ext-section { background: #f7f7f7; padding: 80px 48px; }
+    .landing-ext-inner { max-width: 1020px; margin: 0 auto; }
+    .landing-ext-desc { font-size: 1rem; color: #6b6b6b; margin-top: 14px; max-width: 460px; line-height: 1.65; }
+    .landing-ext-links { display: flex; align-items: center; gap: 16px; margin-top: 32px; flex-wrap: wrap; }
+    .landing-chrome-badge { display: inline-flex; align-items: center; gap: 13px; background: #1f1f1f; color: white; border-radius: 12px; padding: 11px 22px; text-decoration: none; transition: opacity 0.15s, transform 0.15s; flex-shrink: 0; }
+    .landing-chrome-badge:hover { opacity: 0.85; transform: scale(1.02); }
+    .landing-chrome-badge-icon { font-size: 1.6rem; line-height: 1; }
+    .landing-chrome-badge-text { display: flex; flex-direction: column; }
+    .landing-chrome-badge-sm { font-size: 0.62rem; color: rgba(255,255,255,0.65); font-weight: 400; letter-spacing: 0.02em; }
+    .landing-chrome-badge-lg { font-size: 0.9rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+    .landing-ext-divider { color: #ddd; font-size: 1.2rem; }
+    .landing-ext-zip { display: inline-flex; align-items: center; gap: 7px; color: #111; font-size: 0.88rem; font-weight: 600; text-decoration: none; padding: 11px 20px; border: 1.5px solid #ddd; border-radius: 99px; transition: border-color 0.15s; }
+    .landing-ext-zip:hover { border-color: #999; }
+    .landing-ext-guide { font-size: 0.86rem; color: var(--taft-red); font-weight: 600; cursor: pointer; text-decoration: none; padding: 4px 0; border-bottom: 1.5px solid transparent; transition: border-color 0.15s; }
+    .landing-ext-guide:hover { border-bottom-color: var(--taft-red); }
+
     .landing-footer { border-top: 1px solid #ebebeb; padding: 22px 48px; display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: #aaa; }
     .landing-footer a { color: #aaa; text-decoration: none; transition: color 0.15s; }
     .landing-footer a:hover { color: var(--taft-red); }
@@ -424,9 +440,11 @@
       .landing-hero { padding: 56px 20px 64px; }
       .landing-features { padding: 60px 20px; }
       .landing-steps-section { padding: 60px 20px; }
+      .landing-ext-section { padding: 60px 20px; }
       .landing-feat-grid { grid-template-columns: 1fr; }
       .landing-steps-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
       .landing-steps-grid::before { display: none; }
+      .landing-ext-divider { display: none; }
       .landing-footer { padding: 20px; flex-direction: column; gap: 8px; text-align: center; }
     }
   </style>
@@ -505,6 +523,28 @@
           <div class="landing-step-num">✅</div>
           <div class="landing-step-title">4. You're done</div>
           <div class="landing-step-desc">Open your dashboard anytime, on any device</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chrome Extension -->
+    <section class="landing-ext-section">
+      <div class="landing-ext-inner">
+        <div class="landing-section-label">Chrome Extension</div>
+        <h2 class="landing-section-h2">Import assignments<br>with one click.</h2>
+        <p class="landing-ext-desc">Open any Canvas course page and click the extension to sync all assignments instantly — no copy-pasting required.</p>
+        <div class="landing-ext-links">
+          <a href="#" target="_blank" class="landing-chrome-badge">
+            <span class="landing-chrome-badge-icon">🌐</span>
+            <span class="landing-chrome-badge-text">
+              <span class="landing-chrome-badge-sm">Available in the</span>
+              <span class="landing-chrome-badge-lg">Chrome Web Store</span>
+            </span>
+          </a>
+          <span class="landing-ext-divider">|</span>
+          <a href="/extension.zip" download class="landing-ext-zip">⬇ Download .zip</a>
+          <span class="landing-ext-divider">|</span>
+          <a onclick="showScreen('installGuideScreen')" class="landing-ext-guide">View install guide →</a>
         </div>
       </div>
     </section>
