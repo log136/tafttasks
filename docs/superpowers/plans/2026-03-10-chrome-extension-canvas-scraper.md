@@ -56,7 +56,7 @@ test('parseClaudeResponse handles missing assignments key', () => {
 - [ ] **Step 2: Run to verify it fails**
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 node --test netlify/functions/ai-parse.test.js
 ```
 
@@ -168,7 +168,7 @@ Expected: `3 passing`
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 git add netlify/functions/ai-parse.js netlify/functions/ai-parse.test.js
 git commit -m "feat: add ai-parse Netlify function using Claude Haiku"
 ```
@@ -188,7 +188,7 @@ git commit -m "feat: add ai-parse Netlify function using Claude Haiku"
 - [ ] **Step 1: Create the `extension/` directory and `manifest.json`**
 
 ```bash
-mkdir -p "/Users/logan/Desktop/Taft Dashboard/taft-dashboard/extension/icons"
+mkdir -p "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard/extension/icons"
 ```
 
 Create `extension/manifest.json`:
@@ -241,7 +241,7 @@ def make_png(size):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
 
 import os
-base = '/Users/logan/Desktop/Taft Dashboard/taft-dashboard/extension/icons'
+base = '/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard/extension/icons'
 for s in [16, 48, 128]:
     open(f'{base}/icon{s}.png', 'wb').write(make_png(s))
 print('Icons created')
@@ -251,7 +251,7 @@ print('Icons created')
 - [ ] **Step 3: Commit scaffold**
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 git add extension/
 git commit -m "feat: add Chrome extension scaffold and manifest"
 ```
@@ -345,7 +345,7 @@ test('extracts canvas course and assignment IDs from URL', () => {
 - [ ] **Step 2: Run to verify tests fail**
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 node --test extension/content.test.js
 ```
 
@@ -832,7 +832,7 @@ Expected: Google Doc assignments appear in dashboard, structured by Claude.
 - [ ] **Step 1:**
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 node --test netlify/functions/ai-parse.test.js extension/content.test.js
 ```
 

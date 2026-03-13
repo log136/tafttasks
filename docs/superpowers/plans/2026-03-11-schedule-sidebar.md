@@ -103,7 +103,7 @@ Check that all three tables appear under Table Editor. Click each one and confir
 
 - [ ] **Step 1: Write failing tests in `schedule.test.js`**
 
-Create `/Users/logan/Desktop/Taft Dashboard/taft-dashboard/schedule.test.js`:
+Create `/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard/schedule.test.js`:
 
 ```js
 // Tests for schedule utility functions
@@ -170,7 +170,7 @@ describe('advanceDay', () => {
 The project has `"type": "module"` in `package.json`, so Jest needs the experimental VM modules flag:
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 node --experimental-vm-modules node_modules/.bin/jest schedule.test.js 2>&1 | head -20
 ```
 
@@ -178,7 +178,7 @@ Expected: FAIL — `Cannot find module './schedule-utils.js'`
 
 - [ ] **Step 3: Create `schedule-utils.js` with implementations**
 
-Create `/Users/logan/Desktop/Taft Dashboard/taft-dashboard/schedule-utils.js`:
+Create `/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard/schedule-utils.js`:
 
 ```js
 // Pure schedule utility functions — imported by tests
@@ -248,7 +248,7 @@ export function getScheduleForDate(date, TAFT_SCHEDULE, SCHEDULE_OVERRIDES, APP_
 - [ ] **Step 4: Run tests — should pass**
 
 ```bash
-cd "/Users/logan/Desktop/Taft Dashboard/taft-dashboard"
+cd "/Users/logan/Downloads/CoWork/Personal/Taft Dashboard/taft-dashboard"
 node --experimental-vm-modules node_modules/.bin/jest schedule.test.js
 ```
 
