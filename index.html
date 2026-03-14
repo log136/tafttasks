@@ -1074,6 +1074,7 @@ let state = { done: {} };
 let currentFilter = 'all';
 let wizardCourses = [];
 let authMode = 'signin';
+let userSettings = {};  // populated by loadUserSettings() in afterAuth()
 const weekPanelState = {
   weekOffset: 0,
   selectedDayIdx: (new Date().getDay() + 6) % 7,  // Mon=0 … Sun=6
@@ -1391,6 +1392,25 @@ async function loadUserData() {
   return true;
 }
 
+async function loadUserSettings() {
+  const { data, error } = await sb
+    .from('user_settings')
+    .select('trial_started_at, paid_until, stripe_customer_id')
+    .eq('user_id', currentUser.id)
+    .single();
+  userSettings = error ? {} : (data ?? {});
+}
+
+function getAccessState() {
+  if (!userSettings.trial_started_at) return 'no-trial';
+  if (userSettings.paid_until && new Date(userSettings.paid_until) > new Date()) return 'active';
+  const trialEnd = new Date(
+    new Date(userSettings.trial_started_at).getTime() + 14 * 24 * 60 * 60 * 1000
+  );
+  if (new Date() < trialEnd) return 'active';
+  return 'read-only';
+}
+
 async function loadBlockAssignments() {
   const { data } = await sb.from('block_schedule')
     .select('block, course_id')
@@ -1428,6 +1448,14 @@ function setSyncStatus(mode) {
   const [cls, label] = map[mode] || map.local;
   if (cls) dot.classList.add(cls);
   text.textContent = label;
+}
+
+function showPaymentToast(msg) {
+  const toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:12px 20px;border-radius:8px;font-size:0.9rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
 }
 
 // ─────────────────────────────────────────────
@@ -2469,9 +2497,39 @@ async function afterAuth() {
   document.getElementById('headerSubtitle').textContent = emailUser;
   document.getElementById('userEmailDisplay').textContent = currentUser.email;
 
-  // Show admin button only for Logan
   const adminBtn = document.getElementById('adminBtn');
   if (adminBtn) adminBtn.style.display = currentUser.id === ADMIN_USER_ID ? 'inline-block' : 'none';
+
+  // Load subscription state BEFORE rendering
+  await loadUserSettings();
+
+  // First-time user: set trial_started_at
+  if (getAccessState() === 'no-trial') {
+    const now = new Date().toISOString();
+    await sb.from('user_settings').upsert(
+      { user_id: currentUser.id, trial_started_at: now },
+      { onConflict: 'user_id' }
+    );
+    userSettings.trial_started_at = now;
+  }
+
+  // Handle Stripe redirect query params
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('payment')) {
+    const result = params.get('payment');
+    history.replaceState(null, '', window.location.pathname);
+    if (result === 'success') {
+      // Reload user_settings to pick up paid_until set by webhook.
+      // Note: if the webhook hasn't fired yet, paid_until may still be null and the
+      // paywall banner will briefly appear. This resolves on the next reload.
+      // The checkout.session.completed handler writes paid_until optimistically,
+      // so in practice this race is rare but not impossible.
+      await loadUserSettings();
+      showPaymentToast('Payment successful! Full access unlocked.');
+    } else if (result === 'canceled') {
+      showPaymentToast('Payment canceled.');
+    }
+  }
 
   const hasData = await loadUserData();
 
@@ -2486,12 +2544,11 @@ async function afterAuth() {
     updateMissingCount();
     setSyncStatus('ok');
 
-    // Show Sync Canvas button if user has a stored token
     const token = await loadCanvasToken();
     if (token) document.getElementById('syncCanvasBtn').style.display = 'inline-block';
 
     startAutoSync();
-    reSyncCanvas(true); // auto-sync on every dashboard load
+    reSyncCanvas(true);
   }
 }
 
