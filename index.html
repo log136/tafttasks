@@ -560,6 +560,44 @@
       .landing-ext-divider { display: none; }
       .landing-footer { padding: 20px; flex-direction: column; gap: 8px; text-align: center; }
     }
+  /* Paywall banner */
+  .paywall-banner {
+    background: #fef3c7;
+    border: 1.5px solid #f59e0b;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.9rem;
+    color: #92400e;
+  }
+  [data-theme="dark"] .paywall-banner {
+    background: #2d1f00;
+    border-color: #b45309;
+    color: #fcd34d;
+  }
+  .paywall-banner-text { flex: 1; }
+  .paywall-btn {
+    background: #f59e0b;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .paywall-btn:hover { background: #d97706; }
+  .manage-sub-link {
+    text-align: center;
+    padding: 16px 0 8px;
+    font-size: 0.8rem;
+  }
+  .manage-sub-link a { color: var(--muted); text-decoration: underline; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -1753,7 +1791,7 @@ function dueLabel(due) {
   return `<span class="due-label">Due ${fmt}</span>`;
 }
 
-function renderItem(item, courseId, groupIdx) {
+function renderItem(item, courseId, groupIdx, isReadOnly = false) {
   const isDone = !!state.done[item.id];
   const pts = item.pts != null && item.pts > 0 ? `<span class="points-label">${item.pts} pts</span>` : '';
   let urgencyClass = '';
@@ -1777,8 +1815,11 @@ function renderItem(item, courseId, groupIdx) {
         ${item.notes ? `<div class="assignment-note">${item.notes}</div>` : ''}
       </div>
       ${item.url ? `<a class="assignment-link" href="${item.url}" target="_blank" title="Open in Canvas">↗</a>` : ''}
-      <button class="edit-btn" onclick="openEditAssignmentModal('${item.id}','${courseId}',${groupIdx})" title="Edit">✎</button>
-      <button class="delete-btn" onclick="deleteItem('${item.id}','${courseId}',${groupIdx})" title="Delete">✕</button>
+      ${isReadOnly
+        ? `<span style="font-size:0.8rem;color:var(--muted);padding:0 6px" title="Unlock to edit">🔒</span>`
+        : `<button class="edit-btn" onclick="openEditAssignmentModal('${item.id}','${courseId}',${groupIdx})" title="Edit">✎</button>
+           <button class="delete-btn" onclick="deleteItem('${item.id}','${courseId}',${groupIdx})" title="Delete">✕</button>`
+      }
     </div>`;
 }
 
@@ -1788,7 +1829,7 @@ function getCourseProgress(course) {
   return { total, done };
 }
 
-function renderCourse(course) {
+function renderCourse(course, isReadOnly = false) {
   const { total, done } = getCourseProgress(course);
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const noteHtml = course.note ? `<div class="course-note">ℹ️ ${course.note}</div>` : '';
@@ -1798,11 +1839,11 @@ function renderCourse(course) {
 
   let groupsHtml = '';
   course.groups.forEach((group, gi) => {
-    const itemsHtml = group.items.map(item => renderItem(item, course.id, gi)).join('');
+    const itemsHtml = group.items.map(item => renderItem(item, course.id, gi, isReadOnly)).join('');
     groupsHtml += `
       <div class="group-label">${group.label}</div>
       <div id="group_${course.id}_${gi}">${itemsHtml}</div>
-      <div class="add-row">
+      ${isReadOnly ? '' : `<div class="add-row">
         <button class="add-btn" data-course="${course.id}" data-group="${gi}"
           onclick="openAddForm('${course.id}', ${gi})">+ Add assignment</button>
         <div class="add-form" id="addForm_${course.id}_${gi}">
@@ -1819,7 +1860,7 @@ function renderCourse(course) {
           <button class="btn-save" onclick="saveCustom('${course.id}', ${gi})">Add</button>
           <button class="btn-cancel" onclick="closeAddForm('${course.id}', ${gi})">Cancel</button>
         </div>
-      </div>`;
+      </div>`}`;
   });
 
   return `
@@ -2002,9 +2043,21 @@ function weekPanelToggleDone(id, courseId) {
 function renderAll() {
   const main = document.getElementById('mainContent');
   if (!main) return;
-  main.innerHTML = renderWeekPanel() +
-    COURSES.map(c => renderCourse(c)).join('') +
-    `<div class="add-course-card" onclick="openAddCourseModal()">+ Add a Course</div>`;
+  const isReadOnly = getAccessState() === 'read-only';
+  const bannerHtml = isReadOnly
+    ? `<div class="paywall-banner">
+         <span class="paywall-banner-text">Your 14-day trial has ended. Unlock full access for $0.99/month.</span>
+         <button class="paywall-btn" onclick="startCheckout()">Unlock →</button>
+       </div>`
+    : '';
+  const manageHtml = userSettings.stripe_customer_id
+    ? `<div class="manage-sub-link"><a onclick="openCustomerPortal(); return false;">Manage subscription</a></div>`
+    : '';
+  main.innerHTML = bannerHtml +
+    renderWeekPanel() +
+    COURSES.map(c => renderCourse(c, isReadOnly)).join('') +
+    (isReadOnly ? '' : `<div class="add-course-card" onclick="openAddCourseModal()">+ Add a Course</div>`) +
+    manageHtml;
   renderJumps();
   updateOverall();
   applyFilter();
