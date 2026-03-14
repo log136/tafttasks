@@ -46,6 +46,11 @@ export async function onRequestPost(context) {
   if (!userRes.ok) return json({ error: 'Unauthorized' }, 401);
   const user = await userRes.json();
 
+  // ── Validate required env vars ──
+  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return json({ error: 'Server configuration incomplete' }, 500);
+  }
+
   // ── Check for existing Stripe customer ID ──
   const settingsRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/user_settings?user_id=eq.${user.id}&select=stripe_customer_id`,
@@ -56,7 +61,12 @@ export async function onRequestPost(context) {
       },
     }
   );
-  const settings = settingsRes.ok ? await settingsRes.json() : [];
+  let settings = [];
+  if (settingsRes.ok) {
+    settings = await settingsRes.json();
+  } else {
+    console.error('Failed to fetch user settings:', settingsRes.status);
+  }
   const existingCustomerId = settings[0]?.stripe_customer_id;
 
   // ── Build Stripe Checkout Session ──
