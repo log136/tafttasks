@@ -71,8 +71,9 @@ async function findUserByCustomer(customerId, env) {
 }
 
 // Update paid_until for a user (by user_id).
+// Throws on failure so the outer try/catch returns 500 → Stripe retries.
 async function setPaidUntil(userId, value, env) {
-  await fetch(`${env.SUPABASE_URL}/rest/v1/user_settings?user_id=eq.${userId}`, {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/user_settings?user_id=eq.${userId}`, {
     method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
@@ -82,6 +83,10 @@ async function setPaidUntil(userId, value, env) {
     },
     body: JSON.stringify({ paid_until: value }),
   });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`setPaidUntil failed (${res.status}): ${text}`);
+  }
 }
 
 export async function onRequestOptions() {

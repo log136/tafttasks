@@ -1436,7 +1436,16 @@ async function loadUserSettings() {
     .select('trial_started_at, paid_until, stripe_customer_id')
     .eq('user_id', currentUser.id)
     .single();
-  userSettings = error ? {} : (data ?? {});
+  if (!error) {
+    userSettings = data ?? {};
+  } else if (error.code === 'PGRST116') {
+    // No row yet — genuine new user, treat as no-trial
+    userSettings = {};
+  } else {
+    // Network/auth error — don't clobber existing state, don't trigger no-trial
+    console.warn('loadUserSettings error:', error.message);
+    // Leave userSettings unchanged (keeps previous state if this is a reload)
+  }
 }
 
 function getAccessState() {
@@ -1873,10 +1882,10 @@ function renderCourse(course, isReadOnly = false) {
           <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${course.color}"></div></div>
           <span class="mini-count">${done}/${total}</span>
         </div>
-        <button class="course-edit-btn" title="Edit course"
+        ${isReadOnly ? '' : `<button class="course-edit-btn" title="Edit course"
           onclick="event.stopPropagation();openEditCourseModal('${course.id}')">✎</button>
         <button class="course-delete-btn" title="Delete course"
-          onclick="event.stopPropagation();deleteCourse('${course.id}')">✕</button>
+          onclick="event.stopPropagation();deleteCourse('${course.id}')">✕</button>`}
         <span class="collapse-icon">▼</span>
       </div>
       <div class="assignment-body">
