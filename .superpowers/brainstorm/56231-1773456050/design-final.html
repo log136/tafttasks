@@ -1,0 +1,268 @@
+<style>
+  body { background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  .dash-header {
+    background: #8B0000; color: white; padding: 14px 24px 10px;
+    border-radius: 10px 10px 0 0; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .dash-header h1 { font-size: 1rem; font-weight: 800; margin: 0; }
+  .dash-controls {
+    background: white; border-bottom: 1px solid #e5e7eb;
+    padding: 8px 24px; display: flex; gap: 8px; align-items: center;
+    font-size: 0.75rem; color: #6b7280;
+  }
+  .filter-chip { background: #8B0000; color: white; border-radius: 99px; padding: 3px 10px; font-size: 0.72rem; font-weight: 600; }
+  .course-card-stub { background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; border: 1px solid #e5e7eb; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .stub-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+  .stub-sub { font-size: 0.7rem; color: #9ca3af; margin-left: auto; }
+
+  /* ── Week Panel ── */
+  .week-panel {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .week-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px 0;
+  }
+  .week-panel-left { display: flex; align-items: center; gap: 10px; }
+  .week-panel-title {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7280;
+  }
+  .week-nav { display: flex; align-items: center; gap: 5px; }
+  .week-nav-btn {
+    background: none; border: 1px solid #e5e7eb; border-radius: 5px;
+    width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; color: #374151; cursor: pointer;
+  }
+  .week-range { font-size: 0.72rem; font-weight: 600; color: #374151; }
+  .collapse-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 0.72rem; color: #9ca3af; padding: 2px 4px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* Day tabs */
+  .week-tabs { display: flex; gap: 4px; padding: 8px 24px 0; }
+  .week-tab {
+    flex: 1; text-align: center; padding: 6px 4px 5px; border-radius: 8px 8px 0 0;
+    border: 1px solid transparent; border-bottom: none; cursor: pointer;
+    transition: all 0.12s; position: relative; bottom: -1px;
+  }
+  .week-tab.active {
+    background: #f9fafb; border-color: #e5e7eb; border-bottom-color: #f9fafb;
+  }
+  .week-tab.today-tab .tab-day-label { color: #8B0000; }
+  .week-tab.today-tab .tab-date { color: #8B0000; }
+  .week-tab.weekend-tab { opacity: 0.5; }
+  .tab-day-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: #9ca3af; }
+  .week-tab.active .tab-day-label { color: #6b7280; }
+  .tab-date { font-size: 0.82rem; font-weight: 700; color: #374151; }
+  .tab-badge {
+    font-size: 0.58rem; font-weight: 700; background: #e5e7eb;
+    border-radius: 99px; padding: 1px 5px; display: inline-block;
+    margin-top: 2px; color: #6b7280;
+  }
+  .tab-badge.has-items { background: #fee2e2; color: #dc2626; }
+  .tab-badge.all-done { background: #dcfce7; color: #15803d; }
+
+  /* Panel body */
+  .week-panel-body {
+    background: #f9fafb; border-top: 1px solid #e5e7eb;
+    padding: 10px 24px 12px;
+  }
+  .week-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 0; border-bottom: 1px solid #f0f2f5;
+  }
+  .week-item:last-child { border-bottom: none; }
+  .week-checkbox {
+    width: 16px; height: 16px; border-radius: 3px;
+    border: 2px solid #d1d5db; background: white; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.12s;
+  }
+  .week-checkbox.checked { background: #8B0000; border-color: #8B0000; }
+  .week-checkbox.checked::after { content: '✓'; color: white; font-size: 9px; font-weight: 700; }
+  .week-item-name { font-size: 0.82rem; font-weight: 500; color: #374151; flex: 1; }
+  .week-item-name.done-name { text-decoration: line-through; color: #9ca3af; }
+  .week-item-course { font-size: 0.68rem; color: #9ca3af; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .week-item.overdue-item .week-item-name { color: #dc2626; }
+  .overdue-tag { font-size: 0.62rem; font-weight: 700; background: #fee2e2; color: #dc2626; border-radius: 4px; padding: 1px 5px; }
+  .week-empty { font-size: 0.8rem; color: #9ca3af; text-align: center; padding: 14px 0; }
+</style>
+
+<h2>Design Preview</h2>
+<p class="subtitle">The final panel — try clicking the day tabs and the collapse button to see the states.</p>
+
+<div class="mockup" style="border-radius:12px;overflow:hidden;max-width:760px;margin:16px auto">
+  <div class="mockup-header">Dashboard · Mar 10–16, 2026 · Today is Wednesday Mar 12</div>
+  <div class="mockup-body" style="padding:0">
+
+    <div class="dash-header">
+      <h1>📚 Assignment Dashboard</h1>
+      <span style="font-size:0.75rem;opacity:0.7">⚠️ Missing 2</span>
+    </div>
+
+    <!-- WEEK PANEL -->
+    <div class="week-panel" id="weekPanel">
+      <div class="week-panel-header">
+        <div class="week-panel-left">
+          <span class="week-panel-title">Due This Week</span>
+          <div class="week-nav">
+            <button class="week-nav-btn">‹</button>
+            <span class="week-range">Mar 10 – 16</span>
+            <button class="week-nav-btn">›</button>
+          </div>
+        </div>
+        <button class="collapse-btn" onclick="togglePanel()">
+          <span id="collapseLabel">Hide</span> <span id="collapseArrow">▲</span>
+        </button>
+      </div>
+
+      <div class="week-tabs" id="weekTabs">
+        <div class="week-tab" onclick="selectTab(this,0)">
+          <div class="tab-day-label">Mon</div>
+          <div class="tab-date">10</div>
+          <div class="tab-badge has-items">2</div>
+        </div>
+        <div class="week-tab" onclick="selectTab(this,1)">
+          <div class="tab-day-label">Tue</div>
+          <div class="tab-date">11</div>
+          <div class="tab-badge has-items">1</div>
+        </div>
+        <div class="week-tab today-tab active" onclick="selectTab(this,2)">
+          <div class="tab-day-label">Wed · today</div>
+          <div class="tab-date">12</div>
+          <div class="tab-badge has-items">2</div>
+        </div>
+        <div class="week-tab" onclick="selectTab(this,3)">
+          <div class="tab-day-label">Thu</div>
+          <div class="tab-date">13</div>
+          <div class="tab-badge" style="background:#f0f2f5;color:#d1d5db">0</div>
+        </div>
+        <div class="week-tab" onclick="selectTab(this,4)">
+          <div class="tab-day-label">Fri</div>
+          <div class="tab-date">14</div>
+          <div class="tab-badge has-items">1</div>
+        </div>
+        <div class="week-tab weekend-tab" onclick="selectTab(this,5)">
+          <div class="tab-day-label">Sat</div>
+          <div class="tab-date">15</div>
+          <div class="tab-badge" style="background:#f0f2f5;color:#d1d5db">0</div>
+        </div>
+        <div class="week-tab weekend-tab" onclick="selectTab(this,6)">
+          <div class="tab-day-label">Sun</div>
+          <div class="tab-date">16</div>
+          <div class="tab-badge" style="background:#f0f2f5;color:#d1d5db">0</div>
+        </div>
+      </div>
+
+      <div class="week-panel-body" id="panelBody">
+        <!-- Wed content shown by default -->
+        <div class="week-item overdue-item">
+          <div class="week-checkbox"></div>
+          <div class="week-item-name">Quiz Ch 9</div>
+          <div class="week-item-course"><div class="dot" style="background:#6366f1"></div>Statistics</div>
+          <span class="overdue-tag">Due today</span>
+        </div>
+        <div class="week-item">
+          <div class="week-checkbox"></div>
+          <div class="week-item-name">Problem Set 9</div>
+          <div class="week-item-course"><div class="dot" style="background:#6366f1"></div>Statistics</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-controls">
+      <span class="filter-chip">All</span> Incomplete &nbsp;·&nbsp; Complete &nbsp;·&nbsp; 🔍 Search…
+    </div>
+    <div style="padding:10px 24px 16px">
+      <div class="course-card-stub"><div class="dot" style="background:#6366f1"></div><span class="stub-label">Statistics</span><span class="stub-sub">3 / 8 done</span></div>
+      <div class="course-card-stub"><div class="dot" style="background:#f59e0b"></div><span class="stub-label">Spanish IV</span><span class="stub-sub">5 / 12 done</span></div>
+      <div class="course-card-stub"><div class="dot" style="background:#10b981"></div><span class="stub-label">Biology</span><span class="stub-sub">6 / 10 done</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const dayContents = [
+  // Mon
+  [
+    { name: 'Ch 8 HW', course: 'Statistics', color: '#6366f1', urgent: false },
+    { name: 'Bloque A vocab', course: 'Spanish IV', color: '#f59e0b', urgent: false },
+  ],
+  // Tue
+  [
+    { name: 'Lab Report Draft', course: 'Biology', color: '#10b981', urgent: false },
+  ],
+  // Wed (today)
+  [
+    { name: 'Quiz Ch 9', course: 'Statistics', color: '#6366f1', urgent: true, tag: 'Due today' },
+    { name: 'Problem Set 9', course: 'Statistics', color: '#6366f1', urgent: false },
+  ],
+  // Thu
+  [],
+  // Fri
+  [
+    { name: 'Oral Exam prep', course: 'Spanish IV', color: '#f59e0b', urgent: false },
+  ],
+  // Sat
+  [],
+  // Sun
+  [],
+];
+
+const checked = new Set();
+
+function renderBody(dayIdx) {
+  const items = dayContents[dayIdx];
+  const body = document.getElementById('panelBody');
+  if (!items.length) {
+    body.innerHTML = '<div class="week-empty">Nothing due — enjoy the break.</div>';
+    return;
+  }
+  body.innerHTML = items.map((item, i) => {
+    const isDone = checked.has(`${dayIdx}-${i}`);
+    return `<div class="week-item${item.urgent && !isDone ? ' overdue-item' : ''}">
+      <div class="week-checkbox${isDone ? ' checked' : ''}" onclick="toggleCheck(${dayIdx},${i})"></div>
+      <div class="week-item-name${isDone ? ' done-name' : ''}">${item.name}</div>
+      <div class="week-item-course"><div class="dot" style="background:${item.color}"></div>${item.course}</div>
+      ${item.tag && !isDone ? `<span class="overdue-tag">${item.tag}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+let currentTab = 2;
+function selectTab(el, idx) {
+  document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = idx;
+  renderBody(idx);
+}
+
+function toggleCheck(dayIdx, itemIdx) {
+  const key = `${dayIdx}-${itemIdx}`;
+  if (checked.has(key)) checked.delete(key); else checked.add(key);
+  renderBody(dayIdx);
+}
+
+let collapsed = false;
+function togglePanel() {
+  collapsed = !collapsed;
+  const tabs = document.getElementById('weekTabs');
+  const body = document.getElementById('panelBody');
+  const label = document.getElementById('collapseLabel');
+  const arrow = document.getElementById('collapseArrow');
+  tabs.style.display = collapsed ? 'none' : 'flex';
+  body.style.display = collapsed ? 'none' : 'block';
+  label.textContent = collapsed ? 'Show' : 'Hide';
+  arrow.textContent = collapsed ? '▼' : '▲';
+}
+
+renderBody(2);
+</script>

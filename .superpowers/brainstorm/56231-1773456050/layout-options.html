@@ -1,0 +1,302 @@
+<style>
+  body { background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  h2 { margin-bottom: 4px; }
+
+  /* Shared dashboard chrome */
+  .dash-header {
+    background: #8B0000; color: white; padding: 14px 24px 10px;
+    border-radius: 10px 10px 0 0; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .dash-header h1 { font-size: 1rem; font-weight: 800; margin: 0; }
+  .dash-controls {
+    background: white; border-bottom: 1px solid #e5e7eb;
+    padding: 8px 24px; display: flex; gap: 8px; align-items: center;
+    font-size: 0.75rem; color: #6b7280;
+  }
+  .filter-chip {
+    background: #8B0000; color: white; border-radius: 99px;
+    padding: 3px 10px; font-size: 0.72rem; font-weight: 600;
+  }
+  .course-card-stub {
+    background: white; border-radius: 10px; padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    border: 1px solid #e5e7eb;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .stub-label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+  .stub-sub { font-size: 0.7rem; color: #9ca3af; margin-left: auto; }
+
+  /* Week nav shared */
+  .week-nav {
+    display: flex; align-items: center; gap: 8px; font-size: 0.75rem;
+    font-weight: 700; color: #6b7280;
+  }
+  .week-nav button {
+    background: none; border: 1px solid #e5e7eb; border-radius: 6px;
+    width: 24px; height: 24px; cursor: pointer; font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    color: #374151;
+  }
+
+  /* ── OPTION A: Day Columns ── */
+  .opt-a-panel {
+    background: white; border-bottom: 1px solid #e5e7eb;
+    padding: 12px 24px 14px;
+  }
+  .opt-a-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .opt-a-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7280; }
+  .opt-a-cols { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .opt-a-day {
+    border-radius: 8px; padding: 7px 6px; min-height: 64px;
+    background: #f9fafb; border: 1px solid #e5e7eb;
+  }
+  .opt-a-day.today { background: #fff8f8; border-color: #fca5a5; }
+  .opt-a-day.weekend { background: #f3f4f6; opacity: 0.7; }
+  .day-label { font-size: 0.62rem; font-weight: 700; color: #9ca3af;
+    text-transform: uppercase; margin-bottom: 2px; }
+  .day-date { font-size: 0.78rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
+  .opt-a-day.today .day-date { color: #8B0000; }
+  .asgn-pill {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.64rem; font-weight: 500; color: #374151;
+    margin-bottom: 3px; line-height: 1.3;
+  }
+  .asgn-pill .dot { width: 6px; height: 6px; }
+  .asgn-pill.urgent { color: #dc2626; }
+
+  /* ── OPTION B: Compact Strip ── */
+  .opt-b-panel {
+    background: white; border-bottom: 1px solid #e5e7eb;
+    padding: 10px 24px 12px;
+  }
+  .opt-b-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .opt-b-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7280; }
+  .opt-b-days { display: flex; gap: 4px; margin-bottom: 10px; }
+  .opt-b-daytab {
+    flex: 1; text-align: center; padding: 5px 4px; border-radius: 7px;
+    cursor: pointer; border: 1px solid #e5e7eb; background: #f9fafb;
+    transition: all 0.12s;
+  }
+  .opt-b-daytab.active { background: #8B0000; border-color: #8B0000; color: white; }
+  .opt-b-daytab.today-tab { border-color: #fca5a5; }
+  .daytab-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+    color: inherit; }
+  .daytab-date { font-size: 0.72rem; font-weight: 700; }
+  .daytab-count {
+    font-size: 0.58rem; font-weight: 700; margin-top: 2px;
+    background: rgba(0,0,0,0.08); border-radius: 99px;
+    padding: 1px 5px; display: inline-block; color: inherit;
+  }
+  .opt-b-daytab.active .daytab-count { background: rgba(255,255,255,0.25); }
+  .opt-b-daytab.active .daytab-label { color: rgba(255,255,255,0.8); }
+  .opt-b-list { display: flex; flex-direction: column; gap: 4px; }
+  .opt-b-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.8rem; color: #374151; padding: 5px 8px;
+    background: #f9fafb; border-radius: 7px;
+  }
+  .opt-b-item .dot { width: 8px; height: 8px; }
+  .opt-b-course { font-size: 0.68rem; color: #6b7280; margin-left: auto; }
+
+  /* ── OPTION C: Timeline Strip ── */
+  .opt-c-panel {
+    background: white; border-bottom: 1px solid #e5e7eb;
+    padding: 10px 24px 12px;
+  }
+  .opt-c-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .opt-c-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7280; }
+  .opt-c-row { display: flex; gap: 0; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+  .opt-c-day {
+    flex: 1; padding: 8px 6px; border-right: 1px solid #e5e7eb;
+    min-height: 80px;
+  }
+  .opt-c-day:last-child { border-right: none; }
+  .opt-c-day.today-col { background: #fff8f8; }
+  .opt-c-day.weekend-col { background: #f9fafb; opacity: 0.65; }
+  .opt-c-dlabel { font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+    color: #9ca3af; }
+  .opt-c-ddate { font-size: 0.8rem; font-weight: 800; color: #1a1a2e; margin-bottom: 5px; }
+  .opt-c-day.today-col .opt-c-ddate { color: #8B0000; }
+  .opt-c-dots { display: flex; flex-direction: column; gap: 3px; }
+  .opt-c-item {
+    display: flex; align-items: flex-start; gap: 3px;
+    font-size: 0.63rem; color: #374151; line-height: 1.3;
+  }
+  .opt-c-item .dot { width: 6px; height: 6px; margin-top: 2px; flex-shrink: 0; }
+  .opt-c-empty { font-size: 0.62rem; color: #d1d5db; margin-top: 4px; }
+</style>
+
+<h2>Which panel layout feels right?</h2>
+<p class="subtitle">All three show the same week. Pick the one that feels most "quick glance."</p>
+
+<!-- ═══ OPTION A ═══ -->
+<div class="options" style="display:flex;flex-direction:column;gap:20px;margin-top:16px">
+
+<div class="option" data-choice="a" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-radius:12px">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f3f4f6;border-bottom:1px solid #e5e7eb">
+    <div class="letter" style="position:static;width:28px;height:28px;font-size:0.85rem;flex-shrink:0">A</div>
+    <div><h3 style="margin:0;font-size:0.95rem">Day columns — full week visible at once</h3>
+    <p style="margin:0;font-size:0.78rem;color:#6b7280">Each day gets its own column. All 7 days always visible.</p></div>
+  </div>
+  <div style="background:white;padding:0;pointer-events:none">
+    <div class="dash-header"><h1>📚 Assignment Dashboard</h1><span style="font-size:0.75rem;opacity:0.7">logan@taftschool.org</span></div>
+    <div class="opt-a-panel">
+      <div class="opt-a-header">
+        <span class="opt-a-title">Due This Week</span>
+        <div class="week-nav">
+          <button>‹</button>
+          <span>Mar 10 – 16</span>
+          <button>›</button>
+        </div>
+      </div>
+      <div class="opt-a-cols">
+        <div class="opt-a-day">
+          <div class="day-label">Mon</div><div class="day-date">10</div>
+          <div class="asgn-pill"><div class="dot" style="background:#6366f1"></div>Ch 8 HW</div>
+          <div class="asgn-pill"><div class="dot" style="background:#f59e0b"></div>Bloque A</div>
+        </div>
+        <div class="opt-a-day">
+          <div class="day-label">Tue</div><div class="day-date">11</div>
+          <div class="asgn-pill"><div class="dot" style="background:#10b981"></div>Lab Report</div>
+        </div>
+        <div class="opt-a-day today">
+          <div class="day-label" style="color:#8B0000">Wed ·today</div><div class="day-date">12</div>
+          <div class="asgn-pill urgent"><div class="dot" style="background:#dc2626"></div>Quiz Ch 9</div>
+          <div class="asgn-pill"><div class="dot" style="background:#6366f1"></div>Problem Set</div>
+        </div>
+        <div class="opt-a-day">
+          <div class="day-label">Thu</div><div class="day-date">13</div>
+        </div>
+        <div class="opt-a-day">
+          <div class="day-label">Fri</div><div class="day-date">14</div>
+          <div class="asgn-pill"><div class="dot" style="background:#f59e0b"></div>Oral Exam</div>
+        </div>
+        <div class="opt-a-day weekend">
+          <div class="day-label">Sat</div><div class="day-date">15</div>
+        </div>
+        <div class="opt-a-day weekend">
+          <div class="day-label">Sun</div><div class="day-date">16</div>
+        </div>
+      </div>
+    </div>
+    <div class="dash-controls"><span class="filter-chip">All</span> Incomplete &nbsp;·&nbsp; Complete &nbsp;·&nbsp; 🔍 Search…</div>
+    <div style="padding:10px 24px">
+      <div class="course-card-stub"><div class="dot" style="background:#6366f1"></div><span class="stub-label">Statistics</span><span class="stub-sub">3 / 8 done</span></div>
+      <div class="course-card-stub"><div class="dot" style="background:#f59e0b"></div><span class="stub-label">Spanish IV</span><span class="stub-sub">5 / 12 done</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ OPTION B ═══ -->
+<div class="option" data-choice="b" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-radius:12px">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f3f4f6;border-bottom:1px solid #e5e7eb">
+    <div class="letter" style="position:static;width:28px;height:28px;font-size:0.85rem;flex-shrink:0">B</div>
+    <div><h3 style="margin:0;font-size:0.95rem">Day tabs — click to see that day's list</h3>
+    <p style="margin:0;font-size:0.78rem;color:#6b7280">Days are tabs with a count badge. Click one to see its assignments.</p></div>
+  </div>
+  <div style="background:white;padding:0;pointer-events:none">
+    <div class="dash-header"><h1>📚 Assignment Dashboard</h1><span style="font-size:0.75rem;opacity:0.7">logan@taftschool.org</span></div>
+    <div class="opt-b-panel">
+      <div class="opt-b-header">
+        <span class="opt-b-title">Due This Week</span>
+        <div class="week-nav"><button>‹</button><span>Mar 10 – 16</span><button>›</button></div>
+      </div>
+      <div class="opt-b-days">
+        <div class="opt-b-daytab"><div class="daytab-label">Mon</div><div class="daytab-date">10</div><div class="daytab-count">2</div></div>
+        <div class="opt-b-daytab"><div class="daytab-label">Tue</div><div class="daytab-date">11</div><div class="daytab-count">1</div></div>
+        <div class="opt-b-daytab active today-tab"><div class="daytab-label">Wed</div><div class="daytab-date">12</div><div class="daytab-count">2</div></div>
+        <div class="opt-b-daytab"><div class="daytab-label">Thu</div><div class="daytab-date">13</div><div class="daytab-count">0</div></div>
+        <div class="opt-b-daytab"><div class="daytab-label">Fri</div><div class="daytab-date">14</div><div class="daytab-count">1</div></div>
+        <div class="opt-b-daytab" style="opacity:0.5"><div class="daytab-label">Sat</div><div class="daytab-date">15</div><div class="daytab-count">0</div></div>
+        <div class="opt-b-daytab" style="opacity:0.5"><div class="daytab-label">Sun</div><div class="daytab-date">16</div><div class="daytab-count">0</div></div>
+      </div>
+      <div class="opt-b-list">
+        <div class="opt-b-item"><div class="dot" style="background:#dc2626"></div>Quiz Ch 9 <span class="opt-b-course">Statistics</span></div>
+        <div class="opt-b-item"><div class="dot" style="background:#6366f1"></div>Problem Set 9 <span class="opt-b-course">Statistics</span></div>
+      </div>
+    </div>
+    <div class="dash-controls"><span class="filter-chip">All</span> Incomplete &nbsp;·&nbsp; Complete &nbsp;·&nbsp; 🔍 Search…</div>
+    <div style="padding:10px 24px">
+      <div class="course-card-stub"><div class="dot" style="background:#6366f1"></div><span class="stub-label">Statistics</span><span class="stub-sub">3 / 8 done</span></div>
+      <div class="course-card-stub"><div class="dot" style="background:#f59e0b"></div><span class="stub-label">Spanish IV</span><span class="stub-sub">5 / 12 done</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ OPTION C ═══ -->
+<div class="option" data-choice="c" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;border-radius:12px">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f3f4f6;border-bottom:1px solid #e5e7eb">
+    <div class="letter" style="position:static;width:28px;height:28px;font-size:0.85rem;flex-shrink:0">C</div>
+    <div><h3 style="margin:0;font-size:0.95rem">Unified grid — days as columns, borderless</h3>
+    <p style="margin:0;font-size:0.78rem;color:#6b7280">Tighter layout, all 7 days in one connected grid. Denser but more compact.</p></div>
+  </div>
+  <div style="background:white;padding:0;pointer-events:none">
+    <div class="dash-header"><h1>📚 Assignment Dashboard</h1><span style="font-size:0.75rem;opacity:0.7">logan@taftschool.org</span></div>
+    <div class="opt-c-panel">
+      <div class="opt-c-header">
+        <span class="opt-c-title">Due This Week</span>
+        <div class="week-nav"><button>‹</button><span>Mar 10 – 16</span><button>›</button></div>
+      </div>
+      <div class="opt-c-row">
+        <div class="opt-c-day">
+          <div class="opt-c-dlabel">Mon</div><div class="opt-c-ddate">10</div>
+          <div class="opt-c-dots">
+            <div class="opt-c-item"><div class="dot" style="background:#6366f1"></div>Ch 8 HW</div>
+            <div class="opt-c-item"><div class="dot" style="background:#f59e0b"></div>Bloque A</div>
+          </div>
+        </div>
+        <div class="opt-c-day">
+          <div class="opt-c-dlabel">Tue</div><div class="opt-c-ddate">11</div>
+          <div class="opt-c-dots">
+            <div class="opt-c-item"><div class="dot" style="background:#10b981"></div>Lab Report</div>
+          </div>
+        </div>
+        <div class="opt-c-day today-col">
+          <div class="opt-c-dlabel" style="color:#8B0000">Wed ·today</div><div class="opt-c-ddate">12</div>
+          <div class="opt-c-dots">
+            <div class="opt-c-item" style="color:#dc2626"><div class="dot" style="background:#dc2626"></div>Quiz Ch 9</div>
+            <div class="opt-c-item"><div class="dot" style="background:#6366f1"></div>Prob Set</div>
+          </div>
+        </div>
+        <div class="opt-c-day">
+          <div class="opt-c-dlabel">Thu</div><div class="opt-c-ddate">13</div>
+          <div class="opt-c-empty">—</div>
+        </div>
+        <div class="opt-c-day">
+          <div class="opt-c-dlabel">Fri</div><div class="opt-c-ddate">14</div>
+          <div class="opt-c-dots">
+            <div class="opt-c-item"><div class="dot" style="background:#f59e0b"></div>Oral Exam</div>
+          </div>
+        </div>
+        <div class="opt-c-day weekend-col">
+          <div class="opt-c-dlabel">Sat</div><div class="opt-c-ddate">15</div>
+          <div class="opt-c-empty">—</div>
+        </div>
+        <div class="opt-c-day weekend-col">
+          <div class="opt-c-dlabel">Sun</div><div class="opt-c-ddate">16</div>
+          <div class="opt-c-empty">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="dash-controls"><span class="filter-chip">All</span> Incomplete &nbsp;·&nbsp; Complete &nbsp;·&nbsp; 🔍 Search…</div>
+    <div style="padding:10px 24px">
+      <div class="course-card-stub"><div class="dot" style="background:#6366f1"></div><span class="stub-label">Statistics</span><span class="stub-sub">3 / 8 done</span></div>
+      <div class="course-card-stub"><div class="dot" style="background:#f59e0b"></div><span class="stub-label">Spanish IV</span><span class="stub-sub">5 / 12 done</span></div>
+    </div>
+  </div>
+</div>
+
+</div>
