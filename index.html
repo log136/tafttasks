@@ -267,6 +267,10 @@
     .assignment-row.completed .assignment-name { text-decoration: line-through; color: var(--muted); }
     .assignment-row.completed { opacity: 0.6; }
     .assignment-row.completed .overdue-tag { display: none; }
+    .assignment-row.urgent-red { background: #fff1f1; border-left: 3px solid #dc2626; padding-left: 9px; }
+    .assignment-row.urgent-yellow { background: #fffbeb; border-left: 3px solid #d97706; padding-left: 9px; }
+    .assignment-row.urgent-red:hover { background: #fee2e2; }
+    .assignment-row.urgent-yellow:hover { background: #fef3c7; }
     .checkbox-wrap { padding-top: 1px; flex-shrink: 0; }
     .custom-checkbox { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #d1d5db; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: white; }
     .custom-checkbox.checked { background: var(--taft-red); border-color: var(--taft-red); }
@@ -411,6 +415,10 @@
     [data-theme="dark"] .sched-special-row { background: #13161f; border-color: #1f2230; }
     [data-theme="dark"] .sched-select { background: var(--card); color: var(--text); border-color: var(--border); }
     [data-theme="dark"] .assignment-row:hover { background: #1f2230; }
+    [data-theme="dark"] .assignment-row.urgent-red { background: #2a1010; border-left-color: #ef4444; }
+    [data-theme="dark"] .assignment-row.urgent-yellow { background: #241e08; border-left-color: #f59e0b; }
+    [data-theme="dark"] .assignment-row.urgent-red:hover { background: #341414; }
+    [data-theme="dark"] .assignment-row.urgent-yellow:hover { background: #2e260a; }
     [data-theme="dark"] .custom-checkbox { background: var(--card); border-color: #3a3d4a; }
     [data-theme="dark"] .add-course-card { background: var(--card); border-color: #2a2d3a; color: var(--muted); }
     [data-theme="dark"] .add-course-card:hover { border-color: var(--taft-red); color: var(--taft-red); background: #1f1117; }
@@ -1623,8 +1631,14 @@ function dueLabel(due) {
 function renderItem(item, courseId, groupIdx) {
   const isDone = !!state.done[item.id];
   const pts = item.pts != null && item.pts > 0 ? `<span class="points-label">${item.pts} pts</span>` : '';
+  let urgencyClass = '';
+  if (!isDone && item.due) {
+    const diff = (new Date(item.due) - new Date()) / 86400000;
+    if (diff >= 0 && diff < 1) urgencyClass = ' urgent-red';
+    else if (diff >= 0 && diff < 2) urgencyClass = ' urgent-yellow';
+  }
   return `
-    <div class="assignment-row${isDone ? ' completed' : ''}" id="row_${item.id}">
+    <div class="assignment-row${isDone ? ' completed' : ''}${urgencyClass}" id="row_${item.id}">
       <div class="checkbox-wrap">
         <div class="custom-checkbox${isDone ? ' checked' : ''}" onclick="toggleDone('${item.id}','${courseId}')"></div>
       </div>
