@@ -278,6 +278,7 @@
     .assignment-info { flex: 1; min-width: 0; }
     .assignment-name { font-size: 0.875rem; font-weight: 500; line-height: 1.4; word-break: break-word; }
     .assignment-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+    .assignment-note { font-size: 0.72rem; color: var(--muted); margin-top: 3px; font-style: italic; }
     .tag { font-size: 0.68rem; padding: 1px 7px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
     .tag-reading { background: var(--tag-reading); color: var(--tag-reading-text); }
     .tag-homework { background: var(--tag-hw); color: var(--tag-hw-text); }
@@ -993,6 +994,10 @@
           <label>URL (optional)</label>
           <input type="url" id="editAssignmentUrl" placeholder="https://…">
         </div>
+        <div class="modal-form-field">
+          <label>Notes (optional)</label>
+          <textarea id="editAssignmentNotes" placeholder="e.g. need to reread chapter 3 before this" rows="3" style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:0.85rem;font-family:inherit;resize:vertical;outline:none;color:var(--text);background:var(--card)"></textarea>
+        </div>
         <button class="modal-submit-btn" onclick="saveEditAssignment()">Save Changes</button>
       </div>
     </div>
@@ -1359,7 +1364,7 @@ async function loadUserData() {
         label: group.label,
         items: (assignmentsData || [])
           .filter(a => a.group_id === group.id)
-          .map(a => ({ id: a.id, name: a.name, due: a.due, pts: a.pts, type: a.type, url: a.url }))
+          .map(a => ({ id: a.id, name: a.name, due: a.due, pts: a.pts, type: a.type, url: a.url, notes: a.notes || null }))
       }));
 
     const links = Array.isArray(course.links) ? course.links : [];
@@ -1590,6 +1595,7 @@ function openEditAssignmentModal(id, courseId, groupIdx) {
   document.getElementById('editAssignmentDue').value = item.due ? item.due.slice(0, 10) : '';
   document.getElementById('editAssignmentType').value = item.type || 'homework';
   document.getElementById('editAssignmentUrl').value = item.url || '';
+  document.getElementById('editAssignmentNotes').value = item.notes || '';
 
   document.getElementById('editAssignmentModal').classList.add('open');
   setTimeout(() => document.getElementById('editAssignmentName').focus(), 50);
@@ -1609,18 +1615,19 @@ async function saveEditAssignment() {
   const due      = dateVal ? dateVal + 'T04:59:00Z' : null;
   const type     = document.getElementById('editAssignmentType').value;
   const url      = document.getElementById('editAssignmentUrl').value.trim() || null;
+  const notes    = document.getElementById('editAssignmentNotes').value.trim() || null;
 
   const btn = document.querySelector('#editAssignmentModal .modal-submit-btn');
   btn.textContent = 'Saving…'; btn.disabled = true;
 
-  const { error } = await sb.from('assignments').update({ name, due, type, url }).eq('id', id);
+  const { error } = await sb.from('assignments').update({ name, due, type, url, notes }).eq('id', id);
 
   btn.textContent = 'Save Changes'; btn.disabled = false;
   if (error) { alert('Error saving: ' + error.message); return; }
 
   const course = COURSES.find(c => c.id === courseId);
   const item = course.groups[groupIdx].items.find(i => i.id === id);
-  if (item) { item.name = name; item.due = due; item.type = type; item.url = url; }
+  if (item) { item.name = name; item.due = due; item.type = type; item.url = url; item.notes = notes; }
 
   closeEditAssignmentModal();
   renderAll();
@@ -1739,6 +1746,7 @@ function renderItem(item, courseId, groupIdx) {
           ${dueLabel(item.due)}
           ${pts}
         </div>
+        ${item.notes ? `<div class="assignment-note">${item.notes}</div>` : ''}
       </div>
       ${item.url ? `<a class="assignment-link" href="${item.url}" target="_blank" title="Open in Canvas">↗</a>` : ''}
       <button class="edit-btn" onclick="openEditAssignmentModal('${item.id}','${courseId}',${groupIdx})" title="Edit">✎</button>
