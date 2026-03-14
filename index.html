@@ -2266,9 +2266,8 @@ async function init() {
       showScreen('authScreen');
     } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
       currentUser = session.user;
-      // Only run afterAuth if the main screen isn't already visible
-      if (document.getElementById('mainScreen').style.display === 'none' ||
-          document.getElementById('mainScreen').style.display === '') {
+      // Only run afterAuth if the main app screen isn't already visible
+      if (!document.getElementById('app').classList.contains('active')) {
         await afterAuth();
       }
     }
