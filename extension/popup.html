@@ -20,16 +20,11 @@
            cursor: pointer; margin-top: 4px; transition: background 0.15s; }
     .btn:hover:not(:disabled) { background: #a52020; }
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
-    .btn.secondary { background: #065f46; }
-    .btn.secondary:hover:not(:disabled) { background: #047857; }
-    .found { font-size: 0.85rem; margin-bottom: 12px; line-height: 1.5; }
-    .found strong { color: #8B0000; }
     .status { font-size: 0.78rem; color: #1d4ed8; margin-top: 8px; min-height: 18px; }
     .error { color: #dc2626; }
     .user-line { font-size: 0.72rem; color: #6b7280; margin-top: 10px; text-align: center; }
-    .not-canvas { font-size: 0.85rem; color: #6b7280; text-align: center;
-                  padding: 8px 0; line-height: 1.5; }
-    #loginSection, #importSection, #notCanvasSection { display: none; }
+    .not-canvas { font-size: 0.85rem; color: #6b7280; padding: 8px 0 0; line-height: 1.5; }
+    #loginSection, #notCanvasSection { display: none; }
   </style>
 </head>
 <body>
@@ -50,20 +45,9 @@
     <div class="status" id="loginStatus"></div>
   </div>
 
-  <!-- Import -->
-  <div id="importSection" class="card">
-    <div class="found" id="foundSummary"></div>
-    <button class="btn secondary" id="importBtn">Import to Dashboard</button>
-    <div class="status" id="importStatus"></div>
-    <div class="user-line" id="userLine"></div>
-  </div>
-
-  <!-- Sync All / Not on Canvas -->
+  <!-- Full Sync -->
   <div id="notCanvasSection" class="card">
-    <p class="not-canvas" style="margin-bottom:12px;text-align:left;">
-      Sync all your Canvas courses at once, or navigate to a course module page to import from that page.
-    </p>
-    <button class="btn" id="syncAllBtn">↻ Sync All Courses</button>
+    <button class="btn" id="syncAllBtn">↻ Full Sync</button>
     <div class="status" id="syncAllStatus"></div>
     <div class="user-line" id="userLine2"></div>
   </div>

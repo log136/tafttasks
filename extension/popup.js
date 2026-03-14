@@ -8,7 +8,6 @@ const BASE_URL = 'https://tafttasks.pages.dev';
 let sb = null;
 let currentUser = null;
 let currentSession = null;
-let pageData = null;
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded', async () => {
@@ -26,106 +25,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const assignments = [];
-        const googleDocIds = [];
-        const seen = new Set();
-
-        // Collect assignment anchors from both selector variants
-        const itemAnchors = [
-          ...document.querySelectorAll('.ig-row[data-module-type] .ig-title a'),
-          ...document.querySelectorAll('li.context_module_item a.ig-title'),
-        ];
-
-        for (const anchor of itemAnchors) {
-          const href = anchor.getAttribute('href') || '';
-          const fullUrl = href.startsWith('http') ? href : location.origin + href;
-
-          const gdoc = fullUrl.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
-          if (gdoc) {
-            if (!seen.has(gdoc[1])) { seen.add(gdoc[1]); googleDocIds.push({ id: gdoc[1], driveFile: false }); }
-            continue;
-          }
-
-          const li = anchor.closest('li.context_module_item');
-          const typeClass = li?.classList;
-          let type = 'homework';
-          if (typeClass?.contains('quiz')) type = 'quiz';
-          else if (typeClass?.contains('discussion_topic')) type = 'classwork';
-          else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment')) type = 'reading';
-
-          const dueEl = li?.querySelector('.due_date_display');
-          let due = null;
-          if (dueEl) {
-            const cleaned = dueEl.textContent.trim().replace(/\s+at\s+\d+:\d+\s*[ap]m/i, '');
-            const d = new Date(cleaned);
-            if (!isNaN(d)) due = d.toISOString().slice(0, 10);
-          }
-
-          // Extract Canvas course and assignment IDs from the URL path
-          const idMatch = href.match(/\/courses\/(\d+)\/(?:assignments|quizzes)\/(\d+)/);
-
-          assignments.push({
-            name: anchor.textContent.trim(),
-            url: fullUrl,
-            type,
-            due,
-            canvasCourseId: idMatch ? parseInt(idMatch[1]) : null,
-            canvasAssignmentId: idMatch ? parseInt(idMatch[2]) : null,
-          });
-        }
-
-        // Collect embedded Google Doc iframes
-        document.querySelectorAll('iframe').forEach(f => {
-          const src = f.src || f.getAttribute('src') || '';
-          const m = src.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
-          if (m && !seen.has(m[1])) { seen.add(m[1]); googleDocIds.push({ id: m[1], driveFile: false }); }
-        });
-
-        // Pull course ID and name directly from the URL and page — more reliable than tab title
-        const courseIdFromUrl = location.pathname.match(/\/courses\/(\d+)/)?.[1] ?? null;
-        const courseNameFromPage = document.querySelector('.ic-app-crumbs li:nth-child(2) a')?.textContent?.trim()
-          ?? document.title.replace(/\s*[-|].*$/, '').trim()
-          ?? null;
-
-        return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage };
-      },
-    });
-    pageData = result.result;
-  } catch {
-    pageData = null;
-  }
-
   document.getElementById('loginBtn').addEventListener('click', doLogin);
-  document.getElementById('importBtn').addEventListener('click', doImport);
-  document.getElementById('syncAllBtn').addEventListener('click', doSyncAll);
+  document.getElementById('syncAllBtn').addEventListener('click', doFullSync);
 
   render();
+  if (currentUser) doFullSync();
 });
 
 
 function render() {
   const loggedIn = !!currentUser;
-  const onCanvas = pageData && (pageData.assignments.length > 0 || pageData.googleDocIds.length > 0);
-
   document.getElementById('loginSection').style.display = loggedIn ? 'none' : 'block';
-  document.getElementById('importSection').style.display = (loggedIn && onCanvas) ? 'block' : 'none';
-  document.getElementById('notCanvasSection').style.display = (loggedIn && !onCanvas) ? 'block' : 'none';
-
-  if (loggedIn && onCanvas) {
-    const a = pageData.assignments.length;
-    const g = pageData.googleDocIds.length;
-    const parts = [];
-    if (a > 0) parts.push(`<strong>${a}</strong> Canvas assignment${a !== 1 ? 's' : ''}`);
-    if (g > 0) parts.push(`<strong>${g}</strong> document${g !== 1 ? 's' : ''} detected`);
-    document.getElementById('foundSummary').innerHTML = 'Found on this page:<br>' + parts.join('<br>');
-    document.getElementById('userLine').textContent = `✓ Signed in as ${currentUser.email}`;
-  }
-  if (loggedIn && !onCanvas) {
+  document.getElementById('notCanvasSection').style.display = loggedIn ? 'block' : 'none';
+  if (loggedIn) {
     document.getElementById('userLine2').textContent = `✓ Signed in as ${currentUser.email}`;
   }
 }
@@ -153,89 +65,239 @@ async function doLogin() {
   currentUser = data.user;
   currentSession = data.session;
   render();
+  doFullSync();
 }
 
-// ── Import ──
-async function doImport() {
-  const btn = document.getElementById('importBtn');
-  const statusEl = document.getElementById('importStatus');
+// ── Full Sync: iCal + per-course module page scraping ──
+async function doFullSync() {
+  const btn = document.getElementById('syncAllBtn');
+  const statusEl = document.getElementById('syncAllStatus');
   btn.disabled = true;
+  statusEl.className = 'status';
 
   try {
-    let allAssignments = [...pageData.assignments];
+    // Step 1: iCal sync — creates/updates courses in Supabase
+    let { icalUrl } = await chrome.storage.local.get('icalUrl');
 
-    for (const doc of pageData.googleDocIds) {
-      statusEl.textContent = 'Parsing document…';
-      const docText = await fetchDocText(doc.id, doc.driveFile);
-      const aiAssignments = await aiParseDoc(docText);
-      allAssignments = allAssignments.concat(
-        aiAssignments.map(a => ({ ...a, canvasCourseId: null, canvasAssignmentId: null }))
-      );
+    if (!icalUrl) {
+      statusEl.textContent = 'Finding your Canvas calendar…';
+      icalUrl = await discoverICalUrl();
+      if (!icalUrl) {
+        statusEl.textContent = '✗ Could not find Canvas calendar. Make sure you\'re logged into Canvas.';
+        btn.disabled = false;
+        return;
+      }
+      await chrome.storage.local.set({ icalUrl });
+      await sb.from('user_settings').upsert({
+        user_id: currentUser.id,
+        canvas_token: icalUrl,
+      });
     }
 
-    if (!allAssignments.length) {
-      statusEl.textContent = 'No assignments found to import.';
+    statusEl.textContent = 'Syncing iCal…';
+    const icalResult = await chrome.runtime.sendMessage({ type: 'SYNC_NOW' });
+
+    if (!icalResult?.ok) {
+      statusEl.textContent = '✗ iCal sync failed — ' + (icalResult?.error || 'unknown error');
       btn.disabled = false;
       return;
     }
 
-    statusEl.textContent = `Saving ${allAssignments.length} assignments…`;
+    // Step 2: Query courses now in Supabase (created by iCal sync above — works for new users)
+    const { data: courses } = await sb.from('courses')
+      .select('id, name, canvas_course_id')
+      .eq('user_id', currentUser.id)
+      .not('canvas_course_id', 'is', null);
 
-    const courseGroups = groupByCourse(allAssignments);
-    let saved = 0;
-
-    for (const [courseId, items] of Object.entries(courseGroups)) {
-      const course = await getOrCreateCourse(courseId, items[0]);
-      const group = await getOrCreateGroup(course.id, 'Imported');
-
-      // ── Improved deduplication: check both name and canvas_assignment_id ──
-      const { data: existing } = await sb.from('assignments')
-        .select('name, canvas_assignment_id')
-        .eq('group_id', group.id)
-        .eq('user_id', currentUser.id);
-
-      const existingNames = new Set((existing || []).map(a => a.name));
-      const existingCanvasIds = new Set(
-        (existing || []).filter(a => a.canvas_assignment_id).map(a => a.canvas_assignment_id)
-      );
-
-      const rows = items
-        .filter(a => {
-          // Prefer ID-based dedup for Canvas assignments; fall back to name for AI-parsed ones
-          if (a.canvasAssignmentId && existingCanvasIds.has(a.canvasAssignmentId)) return false;
-          if (!a.canvasAssignmentId && existingNames.has(a.name)) return false;
-          return true;
-        })
-        .map((a, i) => ({
-          group_id: group.id,
-          user_id: currentUser.id,
-          name: a.name,
-          type: a.type,
-          due: a.due || null,
-          url: a.url || null,
-          canvas_assignment_id: a.canvasAssignmentId || null,
-          done: false,
-          sort_order: (existing?.length ?? 0) + i,
-        }));
-
-      if (rows.length > 0) {
-        const { error: insertError } = await sb.from('assignments').insert(rows);
-        if (insertError) throw new Error('Assignment insert failed: ' + insertError.message);
-      }
-      saved += rows.length;
+    if (!courses?.length) {
+      statusEl.textContent = '✓ iCal synced! (No Canvas courses found to scrape.)';
+      btn.disabled = false;
+      return;
     }
 
-    const total = allAssignments.length;
-    const skipped = total - saved;
-    statusEl.textContent = skipped > 0
-      ? `✓ Imported ${saved} new, ${skipped} already existed.`
-      : `✓ Imported ${saved} assignment${saved !== 1 ? 's' : ''}!`;
+    // Step 3: Scrape each course's modules page in a hidden tab
+    let totalSaved = 0;
+    for (let i = 0; i < courses.length; i++) {
+      const course = courses[i];
+      statusEl.textContent = `Scraping ${course.name} (${i + 1}/${courses.length})…`;
+
+      const url = `https://taftschool.instructure.com/courses/${course.canvas_course_id}/modules`;
+      const data = await scrapeTab(url);
+
+      if (data?.assignments?.length || data?.googleDocIds?.length) {
+        const { saved } = await importFromPageData(data);
+        totalSaved += saved;
+      }
+    }
+
+    statusEl.textContent = totalSaved > 0
+      ? `✓ All done! Imported ${totalSaved} new assignment${totalSaved !== 1 ? 's' : ''}.`
+      : '✓ All done! Everything was already up to date.';
+
   } catch (err) {
     statusEl.textContent = '✗ ' + err.message;
     statusEl.className = 'status error';
   }
 
   btn.disabled = false;
+}
+
+// Opens a hidden Canvas modules page tab, waits for load, scrapes assignments.
+function scrapeTab(url) {
+  return new Promise(resolve => {
+    chrome.tabs.create({ url, active: false }, tab => {
+      let resolved = false;
+
+      function finish(data) {
+        if (resolved) return;
+        resolved = true;
+        chrome.tabs.remove(tab.id).catch(() => {});
+        resolve(data || null);
+      }
+
+      function tryExtract() {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const assignments = [];
+            const googleDocIds = [];
+            const seen = new Set();
+
+            const itemAnchors = [
+              ...document.querySelectorAll('.ig-row[data-module-type] .ig-title a'),
+              ...document.querySelectorAll('li.context_module_item a.ig-title'),
+            ];
+
+            for (const anchor of itemAnchors) {
+              const href = anchor.getAttribute('href') || '';
+              const fullUrl = href.startsWith('http') ? href : location.origin + href;
+
+              const gdoc = fullUrl.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+              if (gdoc) {
+                if (!seen.has(gdoc[1])) { seen.add(gdoc[1]); googleDocIds.push({ id: gdoc[1], driveFile: false }); }
+                continue;
+              }
+
+              const li = anchor.closest('li.context_module_item');
+              const typeClass = li?.classList;
+              let type = 'homework';
+              if (typeClass?.contains('quiz')) type = 'quiz';
+              else if (typeClass?.contains('discussion_topic')) type = 'classwork';
+              else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment')) type = 'reading';
+
+              const dueEl = li?.querySelector('.due_date_display');
+              let due = null;
+              if (dueEl) {
+                const cleaned = dueEl.textContent.trim().replace(/\s+at\s+\d+:\d+\s*[ap]m/i, '');
+                const d = new Date(cleaned);
+                if (!isNaN(d)) due = d.toISOString().slice(0, 10);
+              }
+
+              const idMatch = href.match(/\/courses\/(\d+)\/(?:assignments|quizzes)\/(\d+)/);
+
+              assignments.push({
+                name: anchor.textContent.trim(),
+                url: fullUrl,
+                type,
+                due,
+                canvasCourseId: idMatch ? parseInt(idMatch[1]) : null,
+                canvasAssignmentId: idMatch ? parseInt(idMatch[2]) : null,
+              });
+            }
+
+            document.querySelectorAll('iframe').forEach(f => {
+              const src = f.src || f.getAttribute('src') || '';
+              const m = src.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+              if (m && !seen.has(m[1])) { seen.add(m[1]); googleDocIds.push({ id: m[1], driveFile: false }); }
+            });
+
+            const courseIdFromUrl = location.pathname.match(/\/courses\/(\d+)/)?.[1] ?? null;
+            const courseNameFromPage = document.querySelector('.ic-app-crumbs li:nth-child(2) a')?.textContent?.trim()
+              ?? document.title.replace(/\s*[-|].*$/, '').trim()
+              ?? null;
+
+            return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage };
+          },
+        }, results => {
+          const data = results?.[0]?.result;
+          if (data) finish(data);
+        });
+      }
+
+      const listener = (tabId, info) => {
+        if (tabId !== tab.id || info.status !== 'complete') return;
+        chrome.tabs.onUpdated.removeListener(listener);
+        tryExtract();
+        setTimeout(tryExtract, 1500);
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+
+      // Hard timeout after 12 s
+      setTimeout(() => finish(null), 12000);
+    });
+  });
+}
+
+// ── Import assignments from a scraped page data object ──
+async function importFromPageData(data) {
+  if (!data) return { saved: 0, total: 0 };
+
+  let allAssignments = [...(data.assignments || [])];
+
+  for (const doc of (data.googleDocIds || [])) {
+    const docText = await fetchDocText(doc.id, doc.driveFile);
+    const aiAssignments = await aiParseDoc(docText);
+    allAssignments = allAssignments.concat(
+      aiAssignments.map(a => ({ ...a, canvasCourseId: null, canvasAssignmentId: null }))
+    );
+  }
+
+  if (!allAssignments.length) return { saved: 0, total: 0 };
+
+  const courseGroups = groupByCourse(allAssignments);
+  let saved = 0;
+  const total = allAssignments.length;
+
+  for (const [courseId, items] of Object.entries(courseGroups)) {
+    const course = await getOrCreateCourse(courseId, items[0], data);
+    const group = await getOrCreateGroup(course.id, 'Imported');
+
+    const { data: existing } = await sb.from('assignments')
+      .select('name, canvas_assignment_id')
+      .eq('group_id', group.id)
+      .eq('user_id', currentUser.id);
+
+    const existingNames = new Set((existing || []).map(a => a.name));
+    const existingCanvasIds = new Set(
+      (existing || []).filter(a => a.canvas_assignment_id).map(a => a.canvas_assignment_id)
+    );
+
+    const rows = items
+      .filter(a => {
+        if (a.canvasAssignmentId && existingCanvasIds.has(a.canvasAssignmentId)) return false;
+        if (!a.canvasAssignmentId && existingNames.has(a.name)) return false;
+        return true;
+      })
+      .map((a, i) => ({
+        group_id: group.id,
+        user_id: currentUser.id,
+        name: a.name,
+        type: a.type,
+        due: a.due || null,
+        url: a.url || null,
+        canvas_assignment_id: a.canvasAssignmentId || null,
+        done: false,
+        sort_order: (existing?.length ?? 0) + i,
+      }));
+
+    if (rows.length > 0) {
+      const { error: insertError } = await sb.from('assignments').insert(rows);
+      if (insertError) throw new Error('Assignment insert failed: ' + insertError.message);
+    }
+    saved += rows.length;
+  }
+
+  return { saved, total };
 }
 
 function groupByCourse(assignments) {
@@ -248,26 +310,25 @@ function groupByCourse(assignments) {
   return map;
 }
 
-async function getOrCreateCourse(canvasCourseId, sampleAssignment) {
-  // Use the course name scraped from the page breadcrumb (more reliable than tab title)
+async function getOrCreateCourse(canvasCourseId, sampleAssignment, data) {
   const courseName = canvasCourseId === 'google-doc'
-    ? (pageData?.courseNameFromPage || 'Imported Course')
-    : (pageData?.courseNameFromPage || `Course ${canvasCourseId}`);
+    ? (data?.courseNameFromPage || 'Imported Course')
+    : (data?.courseNameFromPage || `Course ${canvasCourseId}`);
 
   if (canvasCourseId !== 'google-doc') {
-    const { data } = await sb.from('courses')
+    const { data: existing } = await sb.from('courses')
       .select('*').eq('user_id', currentUser.id).eq('canvas_course_id', parseInt(canvasCourseId)).single();
-    if (data) return data;
+    if (existing) return existing;
   } else {
-    const { data } = await sb.from('courses')
+    const { data: existing } = await sb.from('courses')
       .select('*').eq('user_id', currentUser.id).eq('name', courseName).is('canvas_course_id', null).maybeSingle();
-    if (data) return data;
+    if (existing) return existing;
   }
 
   const colors = ['#1d4ed8', '#065f46', '#7c3aed', '#b45309', '#0e7490', '#be123c'];
   const color = colors[Math.floor(Math.random() * colors.length)];
 
-  const { data, error } = await sb.from('courses').insert({
+  const { data: created, error } = await sb.from('courses').insert({
     user_id: currentUser.id,
     name: courseName,
     color,
@@ -275,7 +336,7 @@ async function getOrCreateCourse(canvasCourseId, sampleAssignment) {
   }).select().single();
 
   if (error) throw new Error('Course create failed: ' + error.message);
-  return data;
+  return created;
 }
 
 async function getOrCreateGroup(courseId, groupName) {
@@ -303,49 +364,6 @@ async function fetchDocText(docId, driveFile = false) {
   const res = await fetch(`${BASE_URL}/api/doc-proxy?docId=${docId}`);
   if (!res.ok) throw new Error(`doc-proxy failed: ${res.status}`);
   return res.text();
-}
-
-// ── Sync All ──
-
-async function doSyncAll() {
-  const btn = document.getElementById('syncAllBtn');
-  const statusEl = document.getElementById('syncAllStatus');
-  btn.disabled = true;
-
-  try {
-    // 1. Use cached iCal URL or auto-discover it
-    let { icalUrl } = await chrome.storage.local.get('icalUrl');
-
-    if (!icalUrl) {
-      statusEl.textContent = 'Finding your Canvas calendar…';
-      icalUrl = await discoverICalUrl();
-      if (!icalUrl) {
-        statusEl.textContent = '✗ Could not find your Canvas calendar. Make sure you\'re logged into Canvas.';
-        btn.disabled = false;
-        return;
-      }
-      // Persist so future syncs and background.js can reuse it
-      await chrome.storage.local.set({ icalUrl });
-      await sb.from('user_settings').upsert({
-        user_id: currentUser.id,
-        canvas_token: icalUrl,
-      });
-    }
-
-    // 2. Trigger background sync and wait for it to finish
-    statusEl.textContent = 'Syncing all courses…';
-    const result = await chrome.runtime.sendMessage({ type: 'SYNC_NOW' });
-
-    if (result?.ok) {
-      statusEl.textContent = '✓ All courses synced!';
-    } else {
-      statusEl.textContent = '✗ Sync failed — ' + (result?.error || 'unknown error');
-    }
-  } catch (err) {
-    statusEl.textContent = '✗ ' + err.message;
-  }
-
-  btn.disabled = false;
 }
 
 // Opens a hidden Canvas calendar tab, waits for load, extracts the iCal feed URL.
