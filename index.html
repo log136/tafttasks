@@ -2605,6 +2605,48 @@ async function afterAuth() {
   }
 }
 
+async function startCheckout() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { alert('Please log in first.'); return; }
+  try {
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    const { url, error } = await res.json();
+    if (error) { alert('Could not start checkout: ' + error); return; }
+    window.location.href = url;
+  } catch (err) {
+    alert('Checkout failed. Please try again.');
+    console.error('startCheckout error:', err);
+  }
+}
+
+async function openCustomerPortal() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { alert('Please log in first.'); return; }
+  try {
+    const res = await fetch('/api/customer-portal', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    const { url, error } = await res.json();
+    if (error) { alert('Could not open portal: ' + error); return; }
+    window.location.href = url;
+  } catch (err) {
+    alert('Could not open subscription portal. Please try again.');
+    console.error('openCustomerPortal error:', err);
+  }
+}
+
 // ─────────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────────
