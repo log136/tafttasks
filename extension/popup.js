@@ -115,16 +115,20 @@ async function doFullSync() {
       return;
     }
 
-    // Step 3: Scrape each course's modules page in a hidden tab
+    // Step 3: Scrape each course's modules + assignments pages in hidden tabs
     let totalSaved = 0;
     for (let i = 0; i < courses.length; i++) {
       const course = courses[i];
       statusEl.textContent = `Scraping ${course.name} (${i + 1}/${courses.length})…`;
 
-      const url = `https://taftschool.instructure.com/courses/${course.canvas_course_id}/modules`;
-      const data = await scrapeTab(url);
+      const base = `https://taftschool.instructure.com/courses/${course.canvas_course_id}`;
+      const [modulesData, assignmentsData] = await Promise.all([
+        scrapeTab(`${base}/modules`),
+        scrapeTab(`${base}/assignments`),
+      ]);
+      const data = mergePageData(modulesData, assignmentsData);
 
-      if (data?.assignments?.length || data?.googleDocIds?.length) {
+      if (data.assignments.length || data.googleDocIds.length) {
         const { saved } = await importFromPageData(data);
         totalSaved += saved;
       }
@@ -298,6 +302,31 @@ async function importFromPageData(data) {
   }
 
   return { saved, total };
+}
+
+// Merge two scraped page data objects, deduplicating by canvasAssignmentId then name.
+function mergePageData(a, b) {
+  const assignments = [...(a?.assignments || [])];
+  const seenIds = new Set(assignments.map(x => x.canvasAssignmentId).filter(Boolean));
+  const seenNames = new Set(assignments.map(x => x.name));
+  for (const item of (b?.assignments || [])) {
+    if (item.canvasAssignmentId && seenIds.has(item.canvasAssignmentId)) continue;
+    if (!item.canvasAssignmentId && seenNames.has(item.name)) continue;
+    assignments.push(item);
+    if (item.canvasAssignmentId) seenIds.add(item.canvasAssignmentId);
+    seenNames.add(item.name);
+  }
+  const seenDocIds = new Set((a?.googleDocIds || []).map(d => d.id));
+  const googleDocIds = [...(a?.googleDocIds || [])];
+  for (const doc of (b?.googleDocIds || [])) {
+    if (!seenDocIds.has(doc.id)) { seenDocIds.add(doc.id); googleDocIds.push(doc); }
+  }
+  return {
+    assignments,
+    googleDocIds,
+    courseIdFromUrl: a?.courseIdFromUrl ?? b?.courseIdFromUrl ?? null,
+    courseNameFromPage: a?.courseNameFromPage ?? b?.courseNameFromPage ?? null,
+  };
 }
 
 function groupByCourse(assignments) {
