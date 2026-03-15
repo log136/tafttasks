@@ -1354,7 +1354,25 @@ const PRESET_COLORS = [
 // ─────────────────────────────────────────────
 //  ADMIN + SCHEDULE CONSTANTS
 // ─────────────────────────────────────────────
-const ADMIN_USER_ID = '79106bc2-d81a-4817-9332-7b6157541497';
+function isAdmin() {
+  return currentUser?.app_metadata?.role === 'admin';
+}
+
+async function adminAction(payload) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Not signed in');
+  const res = await fetch('/api/admin-action', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || 'Admin action failed');
+  return result;
+}
 
 const BLOCK_COLORS = {
   A: '#e6a817', B: '#e87c7c', C: '#7c9de8',
@@ -2414,18 +2432,18 @@ function closeAdminModal() {
 async function saveAltSaturday() {
   const val = document.getElementById('adminAltSatDate').value;
   if (!val) { alert('Pick a date first.'); return; }
-  const { error } = await sb.from('app_settings')
-    .upsert({ key: 'alt_saturday_date', value: val }, { onConflict: 'key' });
-  if (error) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + error.message; return; }
+  try {
+    await adminAction({ action: 'upsert_setting', key: 'alt_saturday_date', value: val });
+  } catch (e) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + e.message; return; }
   APP_SETTINGS['alt_saturday_date'] = val;
   document.getElementById('adminAltSatStatus').textContent = `✓ Saved — ${val}`;
   renderScheduleSidebar();
 }
 
 async function clearAltSaturday() {
-  const { error } = await sb.from('app_settings')
-    .upsert({ key: 'alt_saturday_date', value: '' }, { onConflict: 'key' });
-  if (error) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + error.message; return; }
+  try {
+    await adminAction({ action: 'upsert_setting', key: 'alt_saturday_date', value: '' });
+  } catch (e) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + e.message; return; }
   APP_SETTINGS['alt_saturday_date'] = '';
   document.getElementById('adminAltSatDate').value = '';
   document.getElementById('adminAltSatStatus').textContent = 'Cleared.';
@@ -2506,9 +2524,9 @@ async function saveOverride() {
   if (!date)  { document.getElementById('adminOverrideStatus').textContent = '✗ Pick a date.'; return; }
   if (!label) { document.getElementById('adminOverrideStatus').textContent = '✗ Add a label.'; return; }
   if (!adminEntries.length) { document.getElementById('adminOverrideStatus').textContent = '✗ Add at least one entry.'; return; }
-  const { error } = await sb.from('schedule_overrides')
-    .upsert({ date, label, entries: adminEntries }, { onConflict: 'date' });
-  if (error) { document.getElementById('adminOverrideStatus').textContent = '✗ ' + error.message; return; }
+  try {
+    await adminAction({ action: 'upsert_override', date, label, entries: adminEntries });
+  } catch (e) { document.getElementById('adminOverrideStatus').textContent = '✗ ' + e.message; return; }
   SCHEDULE_OVERRIDES[date] = { label, entries: JSON.parse(JSON.stringify(adminEntries)) };
   document.getElementById('adminOverrideStatus').textContent = `✓ Saved override for ${date}`;
   renderScheduleSidebar();
@@ -2519,8 +2537,9 @@ async function deleteOverride() {
   if (!date) { document.getElementById('adminOverrideStatus').textContent = '✗ Pick a date first.'; return; }
   if (!SCHEDULE_OVERRIDES[date]) { document.getElementById('adminOverrideStatus').textContent = 'No override exists for this date.'; return; }
   if (!confirm(`Delete the custom schedule for ${date}?`)) return;
-  const { error } = await sb.from('schedule_overrides').delete().eq('date', date);
-  if (error) { document.getElementById('adminOverrideStatus').textContent = '✗ ' + error.message; return; }
+  try {
+    await adminAction({ action: 'delete_override', date });
+  } catch (e) { document.getElementById('adminOverrideStatus').textContent = '✗ ' + e.message; return; }
   delete SCHEDULE_OVERRIDES[date];
   adminEntries = [];
   document.getElementById('adminOverrideLabel').value = '';
@@ -2864,7 +2883,7 @@ async function afterAuth() {
   document.getElementById('userEmailDisplay').textContent = currentUser.email;
 
   const adminBtn = document.getElementById('adminBtn');
-  if (adminBtn) adminBtn.style.display = currentUser.id === ADMIN_USER_ID ? 'inline-block' : 'none';
+  if (adminBtn) adminBtn.style.display = isAdmin() ? 'inline-block' : 'none';
 
   // Load subscription state BEFORE rendering
   await loadUserSettings();
