@@ -52,6 +52,33 @@
     .auth-error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; margin-bottom: 14px; display: none; }
     .auth-error.show { display: block; }
 
+    /* ── Toast notifications ── */
+    .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+    .toast { pointer-events: auto; padding: 12px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 500; box-shadow: 0 6px 20px rgba(0,0,0,0.2); animation: toastIn 0.25s ease, toastOut 0.3s ease forwards; opacity: 0; max-width: 380px; text-align: center; line-height: 1.4; }
+    .toast-error { background: #dc2626; color: white; }
+    .toast-success { background: #059669; color: white; }
+    .toast-warn { background: #d97706; color: white; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { to { opacity: 0; transform: translateY(-8px); } }
+
+    /* ── Inline form errors ── */
+    .form-error { color: #dc2626; font-size: 0.78rem; margin-top: 4px; display: none; line-height: 1.4; }
+    .form-error.show { display: block; }
+    .modal-form-field input.field-invalid,
+    .modal-form-field textarea.field-invalid,
+    .wizard-field input.field-invalid { border-color: #dc2626 !important; }
+
+    /* ── Offline banner ── */
+    .offline-banner { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 10001; background: #1f2937; color: #f9fafb; text-align: center; padding: 10px 16px; font-size: 0.82rem; font-weight: 600; }
+    .offline-banner.show { display: block; }
+    [data-theme="dark"] .toast-error { background: #991b1b; }
+    [data-theme="dark"] .toast-success { background: #065f46; }
+    [data-theme="dark"] .toast-warn { background: #92400e; }
+    [data-theme="dark"] .form-error { color: #fca5a5; }
+    [data-theme="dark"] .modal-form-field input.field-invalid,
+    [data-theme="dark"] .modal-form-field textarea.field-invalid,
+    [data-theme="dark"] .wizard-field input.field-invalid { border-color: #f87171 !important; }
+
     /* ── Wizard Screen ── */
     .wizard-page { min-height: 100vh; background: var(--bg); padding: 40px 20px 60px; }
     .wizard-header { text-align: center; margin-bottom: 28px; }
@@ -693,6 +720,9 @@
 </head>
 <body>
 
+<div class="offline-banner" id="offlineBanner">You're offline — changes will fail until your connection is restored.</div>
+<div class="toast-container" id="toastContainer"></div>
+
 <!-- ══════════════════════════════════════════ -->
 <!--  LANDING SCREEN                           -->
 <!-- ══════════════════════════════════════════ -->
@@ -946,11 +976,11 @@
       <h2>Add a Course</h2>
       <div class="wizard-field">
         <label>Course Name *</label>
-        <input type="text" id="wizardCourseName" placeholder="e.g. Honors Statistics">
+        <input type="text" id="wizardCourseName" placeholder="e.g. Honors Statistics" maxlength="100" required>
       </div>
       <div class="wizard-field">
         <label>Teacher</label>
-        <input type="text" id="wizardTeacher" placeholder="e.g. Mr. Smith">
+        <input type="text" id="wizardTeacher" placeholder="e.g. Mr. Smith" maxlength="100">
       </div>
       <div class="wizard-field">
         <label>Color</label>
@@ -959,12 +989,13 @@
       </div>
       <div class="wizard-field">
         <label>Canvas URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-        <input type="url" id="wizardCanvasUrl" placeholder="https://school.instructure.com/courses/...">
+        <input type="url" id="wizardCanvasUrl" placeholder="https://school.instructure.com/courses/..." maxlength="500">
       </div>
       <div class="wizard-field">
         <label>Note <span style="font-weight:400;color:var(--muted)">(optional — e.g. "Check Canvas Calendar for due dates")</span></label>
-        <input type="text" id="wizardNote" placeholder="">
+        <input type="text" id="wizardNote" placeholder="" maxlength="500">
       </div>
+      <div class="form-error" id="wizardFormError"></div>
       <button class="wizard-add-btn" id="wizardAddBtn" onclick="wizardAddCourse()">+ Add Course</button>
     </div>
     <div class="wizard-list" id="wizardCourseList"></div>
@@ -1030,11 +1061,11 @@
       <div class="modal-body">
         <div class="modal-form-field">
           <label>Course Name *</label>
-          <input type="text" id="addCourseName" placeholder="e.g. Honors Statistics">
+          <input type="text" id="addCourseName" placeholder="e.g. Honors Statistics" maxlength="100" required>
         </div>
         <div class="modal-form-field">
           <label>Teacher</label>
-          <input type="text" id="addCourseTeacher" placeholder="e.g. Mr. Smith">
+          <input type="text" id="addCourseTeacher" placeholder="e.g. Mr. Smith" maxlength="100">
         </div>
         <div class="modal-form-field">
           <label>Color</label>
@@ -1043,12 +1074,13 @@
         </div>
         <div class="modal-form-field">
           <label>Canvas URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input type="url" id="addCourseUrl" placeholder="https://school.instructure.com/courses/...">
+          <input type="url" id="addCourseUrl" placeholder="https://school.instructure.com/courses/..." maxlength="500">
         </div>
         <div class="modal-form-field">
           <label>Note <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-          <input type="text" id="addCourseNote" placeholder="">
+          <input type="text" id="addCourseNote" placeholder="" maxlength="500">
         </div>
+        <div class="form-error" id="addCourseFormError"></div>
         <button class="modal-submit-btn" onclick="addCourseFromDashboard()">Add Course</button>
       </div>
     </div>
@@ -1112,17 +1144,18 @@
         <input type="hidden" id="editCourseId">
         <div class="modal-form-field">
           <label>Course Name *</label>
-          <input type="text" id="editCourseName" placeholder="e.g. Honors Statistics">
+          <input type="text" id="editCourseName" placeholder="e.g. Honors Statistics" maxlength="100" required>
         </div>
         <div class="modal-form-field">
           <label>Teacher</label>
-          <input type="text" id="editCourseTeacher" placeholder="e.g. Mr. Smith">
+          <input type="text" id="editCourseTeacher" placeholder="e.g. Mr. Smith" maxlength="100">
         </div>
         <div class="modal-form-field">
           <label>Color</label>
           <div class="color-picker" id="editCourseColorPicker" style="padding:4px 0"></div>
           <input type="hidden" id="editCourseColor" value="#c0392b">
         </div>
+        <div class="form-error" id="editCourseFormError"></div>
         <button class="modal-submit-btn" onclick="saveEditCourse()">Save Changes</button>
       </div>
     </div>
@@ -1141,7 +1174,7 @@
         <input type="hidden" id="editAssignmentGroupIdx">
         <div class="modal-form-field">
           <label>Assignment Name *</label>
-          <input type="text" id="editAssignmentName" placeholder="Assignment name…">
+          <input type="text" id="editAssignmentName" placeholder="Assignment name…" maxlength="200" required>
         </div>
         <div class="modal-form-field">
           <label>Due Date</label>
@@ -1159,12 +1192,13 @@
         </div>
         <div class="modal-form-field">
           <label>URL (optional)</label>
-          <input type="url" id="editAssignmentUrl" placeholder="https://…">
+          <input type="url" id="editAssignmentUrl" placeholder="https://…" maxlength="500">
         </div>
         <div class="modal-form-field">
           <label>Notes (optional)</label>
-          <textarea id="editAssignmentNotes" placeholder="e.g. need to reread chapter 3 before this" rows="3" style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:0.85rem;font-family:inherit;resize:vertical;outline:none;color:var(--text);background:var(--card)"></textarea>
+          <textarea id="editAssignmentNotes" placeholder="e.g. need to reread chapter 3 before this" rows="3" maxlength="1000" style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:6px;font-size:0.85rem;font-family:inherit;resize:vertical;outline:none;color:var(--text);background:var(--card)"></textarea>
         </div>
+        <div class="form-error" id="editAssignmentFormError"></div>
         <button class="modal-submit-btn" onclick="saveEditAssignment()">Save Changes</button>
       </div>
     </div>
@@ -1201,7 +1235,7 @@
           </div>
           <div style="flex:1;min-width:160px;">
             <label style="display:block;font-size:0.75rem;font-weight:600;margin-bottom:4px;">Label</label>
-            <input type="text" id="adminOverrideLabel" placeholder="e.g. Exam Day Schedule" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;outline:none;">
+            <input type="text" id="adminOverrideLabel" placeholder="e.g. Exam Day Schedule" maxlength="100" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;outline:none;">
           </div>
         </div>
 
@@ -1656,12 +1690,71 @@ function setSyncStatus(mode) {
   text.textContent = label;
 }
 
-function showPaymentToast(msg) {
-  const toast = document.createElement('div');
-  toast.textContent = msg;
-  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:12px 20px;border-radius:8px;font-size:0.9rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
+// ── Toast Notification System ──
+function showToast(msg, type = 'error', duration = 4500) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  el.style.animationDuration = '0.25s, 0.3s';
+  el.style.animationDelay = `0s, ${duration}ms`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), duration + 350);
+}
+
+function showPaymentToast(msg) { showToast(msg, 'success', 4000); }
+
+// ── Inline Form Error ──
+function showFormError(errorElId, msg) {
+  const el = document.getElementById(errorElId);
+  if (!el) { showToast(msg); return; }
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function clearFormError(errorElId) {
+  const el = document.getElementById(errorElId);
+  if (el) { el.textContent = ''; el.classList.remove('show'); }
+}
+
+// ── Offline Detection ──
+let _isOffline = !navigator.onLine;
+
+function updateOfflineBanner() {
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+  _isOffline = !navigator.onLine;
+  banner.classList.toggle('show', _isOffline);
+  if (_isOffline) setSyncStatus('offline');
+}
+window.addEventListener('online', () => { updateOfflineBanner(); showToast('Back online.', 'success', 3000); });
+window.addEventListener('offline', updateOfflineBanner);
+
+// ── Retry with Exponential Backoff ──
+async function retryOp(fn, { maxRetries = 3, baseDelay = 500 } = {}) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fn();
+      // Supabase returns { data, error } — treat error as failure
+      if (result && result.error) {
+        const msg = result.error.message || String(result.error);
+        // Don't retry validation/auth errors (4xx)
+        if (/permission|denied|violates|constraint|unauthorized|forbidden/i.test(msg)) {
+          return result;
+        }
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+          continue;
+        }
+        return result;
+      }
+      return result;
+    } catch (err) {
+      if (attempt >= maxRetries) throw err;
+      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+    }
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -1689,28 +1782,33 @@ function selectColor(pickerId, hiddenId, color, el) {
 // ─────────────────────────────────────────────
 async function wizardAddCourse() {
   const name = document.getElementById('wizardCourseName').value.trim();
-  if (!name) { alert('Course name is required.'); return; }
-
   const teacher = document.getElementById('wizardTeacher').value.trim();
   const color = document.getElementById('wizardColor').value;
   const canvasUrl = document.getElementById('wizardCanvasUrl').value.trim();
   const note = document.getElementById('wizardNote').value.trim();
+
+  if (!validateFields([
+    { value: name, label: 'Course name', required: true, maxLen: 100 },
+    { value: teacher, label: 'Teacher', maxLen: 100 },
+    { value: canvasUrl, label: 'Canvas URL', maxLen: 500, urlCheck: true },
+    { value: note, label: 'Note', maxLen: 500 },
+  ], 'wizardFormError')) return;
   const links = canvasUrl ? [{ label: 'Canvas', href: canvasUrl, primary: true }] : [];
 
   const btn = document.getElementById('wizardAddBtn');
   btn.textContent = 'Adding…'; btn.disabled = true;
 
-  const { data: course, error } = await sb.from('courses').insert({
+  const { data: course, error } = await retryOp(() => sb.from('courses').insert({
     user_id: currentUser.id,
     name, teacher, color,
     canvas_url: canvasUrl,
     note: note || null,
     links,
     sort_order: Date.now(),
-  }).select().single();
+  }).select().single());
 
   if (error) {
-    alert('Error adding course: ' + error.message);
+    showFormError('wizardFormError', 'Failed to add course: ' + error.message);
     btn.textContent = '+ Add Course'; btn.disabled = false;
     return;
   }
@@ -1761,6 +1859,7 @@ async function finishWizard() {
 //  ADD COURSE FROM DASHBOARD
 // ─────────────────────────────────────────────
 function openAddCourseModal() {
+  clearFormError('addCourseFormError');
   initColorPicker('addCourseColorPicker', 'addCourseColor');
   document.getElementById('addCourseModal').classList.add('open');
   setTimeout(() => document.getElementById('addCourseName').focus(), 50);
@@ -1774,6 +1873,7 @@ function closeAddCourseModal() {
 //  EDIT COURSE
 // ─────────────────────────────────────────────
 function openEditCourseModal(courseId) {
+  clearFormError('editCourseFormError');
   const course = COURSES.find(c => c.id === courseId);
   if (!course) return;
   document.getElementById('editCourseId').value = courseId;
@@ -1791,18 +1891,22 @@ function closeEditCourseModal() {
 async function saveEditCourse() {
   const courseId = document.getElementById('editCourseId').value;
   const name     = document.getElementById('editCourseName').value.trim();
-  if (!name) { alert('Course name is required.'); return; }
   const teacher  = document.getElementById('editCourseTeacher').value.trim();
+
+  if (!validateFields([
+    { value: name, label: 'Course name', required: true, maxLen: 100 },
+    { value: teacher, label: 'Teacher', maxLen: 100 },
+  ], 'editCourseFormError')) return;
   const color    = document.getElementById('editCourseColor').value;
 
   const btn = document.querySelector('#editCourseModal .modal-submit-btn');
   btn.textContent = 'Saving…'; btn.disabled = true;
 
-  const { error } = await sb.from('courses').update({ name, teacher, color }).eq('id', courseId);
+  const { error } = await retryOp(() => sb.from('courses').update({ name, teacher, color }).eq('id', courseId));
 
   btn.textContent = 'Save Changes'; btn.disabled = false;
 
-  if (error) { alert('Error saving: ' + error.message); return; }
+  if (error) { showFormError('editCourseFormError', 'Failed to save: ' + error.message); return; }
 
   const course = COURSES.find(c => c.id === courseId);
   if (course) { course.name = name; course.teacher = teacher; course.color = color; }
@@ -1817,6 +1921,7 @@ async function saveEditCourse() {
 //  EDIT ASSIGNMENT
 // ─────────────────────────────────────────────
 function openEditAssignmentModal(id, courseId, groupIdx) {
+  clearFormError('editAssignmentFormError');
   const course = COURSES.find(c => c.id === courseId);
   if (!course) return;
   const item = course.groups[groupIdx].items.find(i => i.id === id);
@@ -1844,20 +1949,26 @@ async function saveEditAssignment() {
   const courseId = document.getElementById('editAssignmentCourseId').value;
   const groupIdx = parseInt(document.getElementById('editAssignmentGroupIdx').value);
   const name     = document.getElementById('editAssignmentName').value.trim();
-  if (!name) { alert('Assignment name is required.'); return; }
   const dateVal  = document.getElementById('editAssignmentDue').value;
   const due      = dateVal ? dateVal + 'T04:59:00Z' : null;
   const type     = document.getElementById('editAssignmentType').value;
   const url      = document.getElementById('editAssignmentUrl').value.trim() || null;
   const notes    = document.getElementById('editAssignmentNotes').value.trim() || null;
 
+  if (!validateFields([
+    { value: name, label: 'Assignment name', required: true, maxLen: 200 },
+    { value: url, label: 'URL', maxLen: 500, urlCheck: true },
+    { value: notes, label: 'Notes', maxLen: 1000 },
+  ], 'editAssignmentFormError')) return;
+  if (type && !VALID_TYPES.includes(type)) { showFormError('editAssignmentFormError', 'Invalid assignment type.'); return; }
+
   const btn = document.querySelector('#editAssignmentModal .modal-submit-btn');
   btn.textContent = 'Saving…'; btn.disabled = true;
 
-  const { error } = await sb.from('assignments').update({ name, due, type, url, notes }).eq('id', id);
+  const { error } = await retryOp(() => sb.from('assignments').update({ name, due, type, url, notes }).eq('id', id));
 
   btn.textContent = 'Save Changes'; btn.disabled = false;
-  if (error) { alert('Error saving: ' + error.message); return; }
+  if (error) { showFormError('editAssignmentFormError', 'Failed to save: ' + error.message); return; }
 
   const course = COURSES.find(c => c.id === courseId);
   const item = course.groups[groupIdx].items.find(i => i.id === id);
@@ -1871,25 +1982,30 @@ async function saveEditAssignment() {
 
 async function addCourseFromDashboard() {
   const name = document.getElementById('addCourseName').value.trim();
-  if (!name) { alert('Course name is required.'); return; }
-
   const teacher = document.getElementById('addCourseTeacher').value.trim();
   const color = document.getElementById('addCourseColor').value;
   const canvasUrl = document.getElementById('addCourseUrl').value.trim();
   const note = document.getElementById('addCourseNote').value.trim();
+
+  if (!validateFields([
+    { value: name, label: 'Course name', required: true, maxLen: 100 },
+    { value: teacher, label: 'Teacher', maxLen: 100 },
+    { value: canvasUrl, label: 'Canvas URL', maxLen: 500, urlCheck: true },
+    { value: note, label: 'Note', maxLen: 500 },
+  ], 'addCourseFormError')) return;
   const links = canvasUrl ? [{ label: 'Canvas', href: canvasUrl, primary: true }] : [];
 
   const btn = document.querySelector('#addCourseModal .modal-submit-btn');
   btn.textContent = 'Adding…'; btn.disabled = true;
 
-  const { data: course, error } = await sb.from('courses').insert({
+  const { data: course, error } = await retryOp(() => sb.from('courses').insert({
     user_id: currentUser.id, name, teacher, color,
     canvas_url: canvasUrl, note: note || null, links,
     sort_order: Date.now(),
-  }).select().single();
+  }).select().single());
 
   if (error) {
-    alert('Error: ' + error.message);
+    showFormError('addCourseFormError', 'Failed to add course: ' + error.message);
     btn.textContent = 'Add Course'; btn.disabled = false;
     return;
   }
@@ -1926,12 +2042,14 @@ async function deleteCourse(courseId) {
   if (!course) return;
   if (!confirm(`Delete "${course.name}" and all its assignments?\n\nThis cannot be undone.`)) return;
 
+  setSyncStatus('syncing');
   const groupIds = course.groups.map(g => g.id).filter(Boolean);
   if (groupIds.length > 0) {
-    await sb.from('assignments').delete().in('group_id', groupIds);
+    await retryOp(() => sb.from('assignments').delete().in('group_id', groupIds));
   }
-  await sb.from('assignment_groups').delete().eq('course_id', courseId);
-  await sb.from('courses').delete().eq('id', courseId);
+  await retryOp(() => sb.from('assignment_groups').delete().eq('course_id', courseId));
+  const { error } = await retryOp(() => sb.from('courses').delete().eq('id', courseId));
+  if (error) { setSyncStatus('offline'); showToast('Failed to delete course. Check your connection.'); return; }
 
   // Clean up local state
   course.groups.forEach(g => g.items.forEach(item => delete state.done[item.id]));
@@ -1946,6 +2064,24 @@ async function deleteCourse(courseId) {
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+const VALID_TYPES = ['reading','homework','project','quiz','classwork'];
+
+function isValidUrl(str) {
+  if (!str) return true; // optional
+  try { const u = new URL(str); return u.protocol === 'http:' || u.protocol === 'https:'; }
+  catch { return false; }
+}
+
+function validateFields(fields, errorElId) {
+  clearFormError(errorElId);
+  for (const { value, label, required, maxLen, urlCheck } of fields) {
+    if (required && !value) { showFormError(errorElId, `${label} is required.`); return false; }
+    if (maxLen && value && value.length > maxLen) { showFormError(errorElId, `${label} is too long (max ${maxLen} characters).`); return false; }
+    if (urlCheck && value && !isValidUrl(value)) { showFormError(errorElId, `${label} must be a valid URL (https://…).`); return false; }
+  }
+  return true;
 }
 
 function typeTag(type) {
@@ -1985,8 +2121,8 @@ function openInlineDatePicker(el, itemId, currentDate) {
     input.remove();
 
     // Update Supabase
-    const { error } = await sb.from('assignments').update({ due: newDate }).eq('id', itemId);
-    if (error) { console.error('Date update failed:', error); return; }
+    const { error } = await retryOp(() => sb.from('assignments').update({ due: newDate }).eq('id', itemId));
+    if (error) { showToast('Failed to update date.'); console.error('Date update failed:', error); return; }
 
     // Update local state
     for (const course of COURSES) {
@@ -2069,7 +2205,7 @@ function renderCourse(course, isReadOnly = false) {
         <button class="add-btn" data-course="${course.id}" data-group="${gi}"
           onclick="openAddForm('${course.id}', ${gi})">+ Add assignment</button>
         <div class="add-form" id="addForm_${course.id}_${gi}">
-          <input class="add-name" id="addName_${course.id}_${gi}" placeholder="Assignment name…" type="text"
+          <input class="add-name" id="addName_${course.id}_${gi}" placeholder="Assignment name…" type="text" maxlength="200"
             onkeydown="if(event.key==='Enter')saveCustom('${course.id}',${gi})">
           <input class="add-due" id="addDue_${course.id}_${gi}" type="date">
           <select id="addType_${course.id}_${gi}">
@@ -2431,7 +2567,7 @@ function closeAdminModal() {
 
 async function saveAltSaturday() {
   const val = document.getElementById('adminAltSatDate').value;
-  if (!val) { alert('Pick a date first.'); return; }
+  if (!val) { showToast('Pick a date first.', 'warn'); return; }
   try {
     await adminAction({ action: 'upsert_setting', key: 'alt_saturday_date', value: val });
   } catch (e) { document.getElementById('adminAltSatStatus').textContent = '✗ ' + e.message; return; }
@@ -2571,13 +2707,14 @@ async function toggleDone(id, courseId) {
   updateMissingCount();
   applyFilter();
   setSyncStatus('syncing');
-  const { error } = await sb.from('assignments').update({ done: state.done[id] }).eq('id', id);
+  const { error } = await retryOp(() => sb.from('assignments').update({ done: state.done[id] }).eq('id', id));
+  if (error) showToast('Failed to save — check your connection.');
   setSyncStatus(error ? 'offline' : 'ok');
 }
 
 async function deleteItem(id, courseId, groupIdx) {
   if (!confirm('Remove this assignment?')) return;
-  await sb.from('assignments').delete().eq('id', id);
+  await retryOp(() => sb.from('assignments').delete().eq('id', id));
   const course = COURSES.find(c => c.id === courseId);
   if (course) course.groups.forEach(g => { g.items = g.items.filter(i => i.id !== id); });
   delete state.done[id];
@@ -2602,16 +2739,18 @@ function closeAddForm(courseId, groupIdx) {
 
 async function saveCustom(courseId, groupIdx) {
   const name = document.getElementById(`addName_${courseId}_${groupIdx}`).value.trim();
-  if (!name) return;
   const due = document.getElementById(`addDue_${courseId}_${groupIdx}`).value || null;
   const type = document.getElementById(`addType_${courseId}_${groupIdx}`).value;
 
+  if (!name) { showToast('Assignment name is required.'); return; }
+  if (name.length > 200) { showToast('Assignment name is too long (max 200 characters).'); return; }
+
   const course = COURSES.find(c => c.id === courseId);
   const group = course?.groups[groupIdx];
-  if (!group?.id) { alert('Could not find group. Please refresh.'); return; }
+  if (!group?.id) { showToast('Could not find group. Please refresh.'); return; }
 
   setSyncStatus('syncing');
-  const { data: newAssignment, error } = await sb.from('assignments').insert({
+  const { data: newAssignment, error } = await retryOp(() => sb.from('assignments').insert({
     group_id: group.id,
     user_id: currentUser.id,
     name,
@@ -2619,9 +2758,9 @@ async function saveCustom(courseId, groupIdx) {
     type,
     is_custom: true,
     sort_order: Date.now(),
-  }).select().single();
+  }).select().single());
 
-  if (error) { setSyncStatus('offline'); alert('Failed to save. Try again.'); return; }
+  if (error) { setSyncStatus('offline'); showToast('Failed to save. Check your connection.'); return; }
 
   const item = { id: newAssignment.id, name, due: newAssignment.due, pts: null, type, url: null };
   group.items.push(item);
@@ -2749,8 +2888,8 @@ async function massDelete() {
   if (!confirm(`Delete ${massSelected.size} assignment${massSelected.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
   setSyncStatus('syncing');
   const ids = [...massSelected];
-  const { error } = await sb.from('assignments').delete().in('id', ids);
-  if (error) { setSyncStatus('offline'); alert('Failed to delete. Try again.'); return; }
+  const { error } = await retryOp(() => sb.from('assignments').delete().in('id', ids));
+  if (error) { setSyncStatus('offline'); showToast('Failed to delete. Check your connection.'); return; }
   COURSES.forEach(c => c.groups.forEach(g => {
     g.items = g.items.filter(i => !massSelected.has(i.id));
   }));
@@ -2763,8 +2902,8 @@ async function massMarkDone() {
   if (massSelected.size === 0) return;
   setSyncStatus('syncing');
   const ids = [...massSelected];
-  const { error } = await sb.from('assignments').update({ done: true }).in('id', ids);
-  if (error) { setSyncStatus('offline'); alert('Failed to update. Try again.'); return; }
+  const { error } = await retryOp(() => sb.from('assignments').update({ done: true }).in('id', ids));
+  if (error) { setSyncStatus('offline'); showToast('Failed to update. Check your connection.'); return; }
   ids.forEach(id => { state.done[id] = true; });
   setSyncStatus('ok');
   exitMassSelect();
@@ -2933,7 +3072,7 @@ async function afterAuth() {
 
 async function startCheckout() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { alert('Please log in first.'); return; }
+  if (!session) { showToast('Please log in first.', 'warn'); return; }
   try {
     const res = await fetch('/api/create-checkout', {
       method: 'POST',
@@ -2944,17 +3083,17 @@ async function startCheckout() {
       body: JSON.stringify({}),
     });
     const { url, error } = await res.json();
-    if (error) { alert('Could not start checkout: ' + error); return; }
+    if (error) { showToast('Could not start checkout: ' + error); return; }
     window.location.href = url;
   } catch (err) {
-    alert('Checkout failed. Please try again.');
+    showToast('Checkout failed. Please try again.');
     console.error('startCheckout error:', err);
   }
 }
 
 async function openCustomerPortal() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { alert('Please log in first.'); return; }
+  if (!session) { showToast('Please log in first.', 'warn'); return; }
   try {
     const res = await fetch('/api/customer-portal', {
       method: 'POST',
@@ -2965,10 +3104,10 @@ async function openCustomerPortal() {
       body: JSON.stringify({}),
     });
     const { url, error } = await res.json();
-    if (error) { alert('Could not open portal: ' + error); return; }
+    if (error) { showToast('Could not open portal: ' + error); return; }
     window.location.href = url;
   } catch (err) {
-    alert('Could not open subscription portal. Please try again.');
+    showToast('Could not open subscription portal. Please try again.');
     console.error('openCustomerPortal error:', err);
   }
 }
@@ -2977,6 +3116,7 @@ async function openCustomerPortal() {
 //  INIT
 // ─────────────────────────────────────────────
 async function init() {
+  updateOfflineBanner();
   // Enter key handlers for auth
   document.getElementById('authEmail').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('authPassword').focus();
