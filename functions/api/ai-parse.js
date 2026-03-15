@@ -1,11 +1,11 @@
 /**
  * Cloudflare Pages Function: /api/ai-parse
  *
- * Receives plain text from a Google Doc, calls Claude Haiku to extract
- * structured assignments, and returns JSON.
+ * Receives plain text from a document or Canvas page, calls Gemini Flash
+ * to extract structured assignments, and returns JSON.
  *
  * Required environment variables (set in Cloudflare Pages → Settings → Environment variables):
- *   ANTHROPIC_API_KEY   — your Anthropic API key
+ *   GEMINI_API_KEY      — your Google AI Studio API key
  *   SUPABASE_URL        — e.g. https://pupqkuunekeeyfnfjpde.supabase.co
  *   SUPABASE_ANON_KEY   — your Supabase anon/public key
  */
@@ -23,7 +23,7 @@ function json(data, status = 200) {
   });
 }
 
-export function parseClaudeResponse(text) {
+export function parseGeminiResponse(text) {
   try {
     const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
     const parsed = JSON.parse(stripped);
@@ -49,7 +49,6 @@ export async function onRequestPost(context) {
   }
   const token = authHeader.slice(7);
 
-  // Validate the token against Supabase — rejects expired/invalid JWTs
   const userRes = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -71,9 +70,9 @@ export async function onRequestPost(context) {
     return json({ error: 'Missing docText' }, 400);
   }
 
-  const apiKey = env.ANTHROPIC_API_KEY;
+  const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) {
-    return json({ error: 'ANTHROPIC_API_KEY not configured' }, 500);
+    return json({ error: 'GEMINI_API_KEY not configured' }, 500);
   }
 
   const prompt = `You are extracting assignments from a class handout or assignment sheet. Return ONLY valid JSON with this exact shape:
@@ -93,28 +92,29 @@ Document text:
 ${docText.slice(0, 8000)}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 2048,
+            temperature: 0.1,
+          },
+        }),
+      }
+    );
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Anthropic API error ${res.status}: ${err}`);
+      throw new Error(`Gemini API error ${res.status}: ${err}`);
     }
 
     const data = await res.json();
-    const rawText = data.content?.[0]?.text ?? '{}';
-    const assignments = parseClaudeResponse(rawText);
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+    const assignments = parseGeminiResponse(rawText);
     return json({ assignments });
   } catch (err) {
     console.error('ai-parse error:', err);
