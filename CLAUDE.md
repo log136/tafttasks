@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-Taft School assignment dashboard — a multi-user web app where students aggregate assignments from Canvas LMS and manual sources into one place. Deployed on Cloudflare Pages at https://tafttasks.pages.dev/.
+Taft School assignment dashboard — a multi-user web app where students aggregate assignments from Canvas LMS and manual sources into one place. Deployed on Cloudflare Pages at https://tafttasks.pages.dev/ and https://tafttasks.com/.
 
 ## Architecture
 
