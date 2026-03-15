@@ -118,18 +118,39 @@ async function doFullSync() {
     // Store for Phase 2
     discoveredCourses = canvasCourses;
 
-    // Render checkboxes
+    // Split into current and past courses
+    const currentCourses = canvasCourses.filter(c => !c.past);
+    const pastCourses = canvasCourses.filter(c => c.past);
+
+    // Render checkboxes — current courses shown normally, past greyed out
     const listEl = document.getElementById('courseCheckList');
-    listEl.innerHTML = canvasCourses.map((c, i) => {
+    let html = currentCourses.map((c) => {
+      const i = canvasCourses.indexOf(c);
       const exists = existingIds.has(String(c.id));
       return `<label class="course-item">
-        <input type="checkbox" value="${i}" ${exists ? '' : 'checked'}>
+        <input type="checkbox" value="${i}">
         <span class="course-item-name">${c.name}</span>
         ${exists ? '<span class="course-item-badge">already added</span>' : ''}
       </label>`;
     }).join('');
 
-    statusEl.textContent = `Found ${canvasCourses.length} course${canvasCourses.length !== 1 ? 's' : ''}.`;
+    if (pastCourses.length) {
+      html += `<div class="past-courses-toggle" style="margin:8px 0 4px;font-size:0.8rem;color:#888;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.nextElementSibling.style.display==='none'?'▸ Past courses (${pastCourses.length})':'▾ Past courses (${pastCourses.length})'">▸ Past courses (${pastCourses.length})</div>`;
+      html += `<div style="display:none;opacity:0.5">`;
+      html += pastCourses.map((c) => {
+        const i = canvasCourses.indexOf(c);
+        const exists = existingIds.has(String(c.id));
+        return `<label class="course-item">
+          <input type="checkbox" value="${i}">
+          <span class="course-item-name">${c.name}</span>
+          ${exists ? '<span class="course-item-badge">already added</span>' : ''}
+        </label>`;
+      }).join('');
+      html += `</div>`;
+    }
+    listEl.innerHTML = html;
+
+    statusEl.textContent = `Found ${currentCourses.length} current course${currentCourses.length !== 1 ? 's' : ''}.`;
     document.getElementById('courseSelectSection').style.display = 'block';
     document.getElementById('scrapeStatus').textContent = '';
 
@@ -178,20 +199,53 @@ async function doScrapeSelected() {
         if (!a.canvasCourseId) a.canvasCourseId = parseInt(cc.id);
       }
 
-      // AI fallback: if selectors found nothing, parse page text (with content-hash cache)
+      // AI fallback: if selectors found nothing, try wiki pages then page text
       if (!data.assignments.length && !data.googleDocIds.length) {
-        const pageText = modulesData?.pageText || assignmentsData?.pageText || '';
-        if (pageText.length > 50) {
-          statusEl.textContent = `AI-parsing ${cc.name} (${i + 1}/${selected.length})…`;
-          try {
-            const aiAssignments = await cachedAiParse(cc.id, pageText);
-            for (const a of aiAssignments) {
-              a.canvasCourseId = parseInt(cc.id);
-              a.canvasAssignmentId = null;
+        // Check course home for links to assignment-related wiki pages
+        statusEl.textContent = `Checking ${cc.name} home page…`;
+        const homeData = await scrapeTab(base);
+        const wikiLinks = (homeData?.wikiLinks || []).filter(l =>
+          /assign|syllab|homework|schedule/i.test(l.text + ' ' + l.href)
+        );
+
+        // Scrape the first matching wiki page for embedded docs/text
+        let pageText = '';
+        let wikiData = null;
+        if (wikiLinks.length > 0) {
+          const wikiUrl = wikiLinks[0].href.startsWith('http') ? wikiLinks[0].href : `https://taftschool.instructure.com${wikiLinks[0].href}`;
+          wikiData = await scrapeTab(wikiUrl);
+          pageText = wikiData?.pageText || '';
+          // Merge any Google Doc IDs or assignments found on the wiki page
+          if (wikiData?.googleDocIds?.length) {
+            for (const doc of wikiData.googleDocIds) {
+              if (!data.googleDocIds.some(d => d.id === doc.id)) data.googleDocIds.push(doc);
             }
-            data.assignments = aiAssignments;
-          } catch (err) {
-            console.error('AI parse failed for', cc.name, err);
+          }
+          if (wikiData?.assignments?.length) {
+            for (const a of wikiData.assignments) {
+              if (!a.canvasCourseId) a.canvasCourseId = parseInt(cc.id);
+              data.assignments.push(a);
+            }
+          }
+        }
+
+        // If we found Google Docs on the wiki page, skip AI — importFromPageData will fetch & parse them
+        if (!data.assignments.length && !data.googleDocIds.length) {
+          if (pageText.length < 50) {
+            pageText = modulesData?.pageText || assignmentsData?.pageText || '';
+          }
+          if (pageText.length > 50) {
+            statusEl.textContent = `AI-parsing ${cc.name} (${i + 1}/${selected.length})…`;
+            try {
+              const aiAssignments = await cachedAiParse(cc.id, pageText);
+              for (const a of aiAssignments) {
+                a.canvasCourseId = parseInt(cc.id);
+                a.canvasAssignmentId = null;
+              }
+              data.assignments = aiAssignments;
+            } catch (err) {
+              console.error('AI parse failed for', cc.name, err);
+            }
           }
         }
       }
@@ -233,14 +287,25 @@ function scrapeCanvasCourses() {
           func: () => {
             const courses = [];
             const seen = new Set();
-            // Canvas courses page: table rows with course links
-            document.querySelectorAll('tr.course-list-table-row a, .course-list-course-title-column a, td a[href*="/courses/"]').forEach(a => {
+
+            // Find the "Past Enrollments" heading to split current vs past
+            const pastHeading = [...document.querySelectorAll('h2')].find(h => /past enrollments/i.test(h.textContent));
+            const pastTable = pastHeading?.nextElementSibling?.tagName === 'TABLE' ? pastHeading.nextElementSibling : null;
+            const pastRows = pastTable ? new Set(pastTable.querySelectorAll('tr')) : new Set();
+
+            // All table rows with course links
+            document.querySelectorAll('td a[href*="/courses/"]').forEach(a => {
               const m = (a.getAttribute('href') || '').match(/\/courses\/(\d+)/);
-              if (m && !seen.has(m[1])) {
-                seen.add(m[1]);
-                courses.push({ id: m[1], name: a.textContent.trim() });
-              }
+              if (!m || seen.has(m[1])) return;
+              seen.add(m[1]);
+              const row = a.closest('tr');
+              const isPast = pastRows.has(row);
+              const cells = row ? [...row.querySelectorAll('td')] : [];
+              const term = cells[3]?.textContent?.trim() || '';
+              const published = cells[5]?.textContent?.trim()?.startsWith('Yes');
+              courses.push({ id: m[1], name: a.textContent.trim(), past: isPast, term, published });
             });
+
             // Fallback: any course link on the page
             if (!courses.length) {
               document.querySelectorAll('a[href*="/courses/"]').forEach(a => {
@@ -248,7 +313,7 @@ function scrapeCanvasCourses() {
                 if (m && !seen.has(m[1])) {
                   seen.add(m[1]);
                   const name = a.textContent.trim();
-                  if (name && name.length > 1) courses.push({ id: m[1], name });
+                  if (name && name.length > 1) courses.push({ id: m[1], name, past: false, term: '', published: true });
                 }
               });
             }
@@ -314,6 +379,7 @@ function scrapeTab(url) {
               let type = 'homework';
               let isAssignment = false;
 
+              if (typeClass?.contains('assignment')) { isAssignment = true; }
               if (typeClass?.contains('quiz')) { type = 'quiz'; isAssignment = true; }
               else if (typeClass?.contains('discussion_topic')) { type = 'classwork'; isAssignment = true; }
               else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment') || typeClass?.contains('external_url')) {
@@ -330,7 +396,12 @@ function scrapeTab(url) {
               }
 
               const idMatch = href.match(/\/courses\/(\d+)\/(?:assignments|quizzes)\/(\d+)/);
-              if (idMatch) isAssignment = true; // has an assignment or quiz URL
+              if (idMatch) isAssignment = true;
+
+              // Extract assignment ID from li class (e.g. "Assignment_74568") when URL doesn't contain it
+              let assignmentIdFromClass = null;
+              const classMatch = li?.className?.match(/Assignment_(\d+)/);
+              if (classMatch) { assignmentIdFromClass = parseInt(classMatch[1]); isAssignment = true; }
 
               // Skip non-assignment items (pages, files, external links without due dates)
               if (!isAssignment) continue;
@@ -341,7 +412,7 @@ function scrapeTab(url) {
                 type,
                 due,
                 canvasCourseId: idMatch ? parseInt(idMatch[1]) : null,
-                canvasAssignmentId: idMatch ? parseInt(idMatch[2]) : null,
+                canvasAssignmentId: idMatch ? parseInt(idMatch[2]) : assignmentIdFromClass,
               });
             }
 
@@ -356,11 +427,31 @@ function scrapeTab(url) {
               ?? document.title.replace(/\s*[-|].*$/, '').trim()
               ?? null;
 
-            // Capture page text for AI fallback when selectors miss
-            const mainEl = document.querySelector('#content') || document.querySelector('.ic-Layout-contentMain') || document.body;
-            const pageText = mainEl?.innerText?.slice(0, 8000) || '';
+            // Collect wiki page links from course home pages
+            const wikiLinks = [];
+            document.querySelectorAll('a[href*="/pages/"]').forEach(a => {
+              const href = a.getAttribute('href') || '';
+              const text = a.textContent.trim() || a.getAttribute('title') || '';
+              if (href.includes('/pages/') && text) wikiLinks.push({ href, text });
+            });
 
-            return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage, pageText };
+            // Capture page text for AI fallback — include embedded doc viewer text
+            const mainEl = document.querySelector('#content') || document.querySelector('.ic-Layout-contentMain') || document.body;
+            let pageText = mainEl?.innerText?.slice(0, 8000) || '';
+
+            // Also grab text from embedded Canvas file viewer iframes
+            document.querySelectorAll('iframe').forEach(f => {
+              try {
+                const iDoc = f.contentDocument || f.contentWindow?.document;
+                if (iDoc) {
+                  const iText = iDoc.body?.innerText || '';
+                  if (iText.length > 50) pageText += '\n' + iText.slice(0, 8000);
+                }
+              } catch (e) { /* cross-origin, skip */ }
+            });
+            pageText = pageText.slice(0, 8000);
+
+            return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage, pageText, wikiLinks };
           },
         }, results => {
           const data = results?.[0]?.result;
