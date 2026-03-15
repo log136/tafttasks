@@ -68,7 +68,7 @@ async function doLogin() {
   doFullSync();
 }
 
-// ── Full Sync: iCal + per-course module page scraping ──
+// ── Full Sync: scrape Canvas courses page, then scrape each course ──
 async function doFullSync() {
   const btn = document.getElementById('syncAllBtn');
   const statusEl = document.getElementById('syncAllStatus');
@@ -76,57 +76,60 @@ async function doFullSync() {
   statusEl.className = 'status';
 
   try {
-    // Step 1: iCal sync — creates/updates courses in Supabase
+    // Step 1: Scrape the Canvas courses page to discover enrolled courses
+    statusEl.textContent = 'Finding your Canvas courses…';
+    const canvasCourses = await scrapeCanvasCourses();
+
+    if (!canvasCourses?.length) {
+      statusEl.textContent = '✗ No courses found. Make sure you\'re logged into Canvas.';
+      btn.disabled = false;
+      return;
+    }
+
+    // Step 2: Also kick off iCal sync in the background (best-effort, non-blocking)
     let { icalUrl } = await chrome.storage.local.get('icalUrl');
-
-    if (!icalUrl) {
-      statusEl.textContent = 'Finding your Canvas calendar…';
-      icalUrl = await discoverICalUrl();
-      if (!icalUrl) {
-        statusEl.textContent = '✗ Could not find Canvas calendar. Make sure you\'re logged into Canvas.';
-        btn.disabled = false;
-        return;
-      }
-      await chrome.storage.local.set({ icalUrl });
-      await sb.from('user_settings').upsert({
-        user_id: currentUser.id,
-        canvas_token: icalUrl,
-      });
+    if (icalUrl) {
+      chrome.runtime.sendMessage({ type: 'SYNC_NOW' }).catch(() => {});
     }
 
-    statusEl.textContent = 'Syncing iCal…';
-    const icalResult = await chrome.runtime.sendMessage({ type: 'SYNC_NOW' });
-
-    if (!icalResult?.ok) {
-      statusEl.textContent = '✗ iCal sync failed — ' + (icalResult?.error || 'unknown error');
-      btn.disabled = false;
-      return;
-    }
-
-    // Step 2: Query courses now in Supabase (created by iCal sync above — works for new users)
-    const { data: courses } = await sb.from('courses')
-      .select('id, name, canvas_course_id')
-      .eq('user_id', currentUser.id)
-      .not('canvas_course_id', 'is', null);
-
-    if (!courses?.length) {
-      statusEl.textContent = '✓ iCal synced! (No Canvas courses found to scrape.)';
-      btn.disabled = false;
-      return;
-    }
-
-    // Step 3: Scrape each course's modules + assignments pages in hidden tabs
+    // Step 3: Scrape each course's modules + assignments pages
     let totalSaved = 0;
-    for (let i = 0; i < courses.length; i++) {
-      const course = courses[i];
-      statusEl.textContent = `Scraping ${course.name} (${i + 1}/${courses.length})…`;
+    for (let i = 0; i < canvasCourses.length; i++) {
+      const cc = canvasCourses[i];
+      statusEl.textContent = `Scraping ${cc.name} (${i + 1}/${canvasCourses.length})…`;
 
-      const base = `https://taftschool.instructure.com/courses/${course.canvas_course_id}`;
+      const base = `https://taftschool.instructure.com/courses/${cc.id}`;
       const [modulesData, assignmentsData] = await Promise.all([
         scrapeTab(`${base}/modules`),
         scrapeTab(`${base}/assignments`),
       ]);
       const data = mergePageData(modulesData, assignmentsData);
+      // Attach course info so importFromPageData can create/find the right course
+      data.courseIdFromUrl = cc.id;
+      data.courseNameFromPage = cc.name;
+
+      // Ensure all assignments have the canvas course ID
+      for (const a of data.assignments) {
+        if (!a.canvasCourseId) a.canvasCourseId = parseInt(cc.id);
+      }
+
+      // AI fallback: if selectors found few/no assignments, parse page text
+      if (!data.assignments.length && !data.googleDocIds.length) {
+        const pageText = modulesData?.pageText || assignmentsData?.pageText || '';
+        if (pageText.length > 50) {
+          statusEl.textContent = `AI-parsing ${cc.name} (${i + 1}/${canvasCourses.length})…`;
+          try {
+            const aiAssignments = await aiParseDoc(pageText);
+            for (const a of aiAssignments) {
+              a.canvasCourseId = parseInt(cc.id);
+              a.canvasAssignmentId = null;
+            }
+            data.assignments = aiAssignments;
+          } catch (err) {
+            console.error('AI parse failed for', cc.name, err);
+          }
+        }
+      }
 
       if (data.assignments.length || data.googleDocIds.length) {
         const { saved } = await importFromPageData(data);
@@ -144,6 +147,65 @@ async function doFullSync() {
   }
 
   btn.disabled = false;
+}
+
+// Scrape the Canvas courses page for enrolled course IDs and names
+function scrapeCanvasCourses() {
+  return new Promise(resolve => {
+    chrome.tabs.create({ url: 'https://taftschool.instructure.com/courses', active: false }, tab => {
+      let resolved = false;
+
+      function finish(data) {
+        if (resolved) return;
+        resolved = true;
+        chrome.tabs.remove(tab.id).catch(() => {});
+        resolve(data || []);
+      }
+
+      function tryExtract() {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const courses = [];
+            const seen = new Set();
+            // Canvas courses page: table rows with course links
+            document.querySelectorAll('tr.course-list-table-row a, .course-list-course-title-column a, td a[href*="/courses/"]').forEach(a => {
+              const m = (a.getAttribute('href') || '').match(/\/courses\/(\d+)/);
+              if (m && !seen.has(m[1])) {
+                seen.add(m[1]);
+                courses.push({ id: m[1], name: a.textContent.trim() });
+              }
+            });
+            // Fallback: any course link on the page
+            if (!courses.length) {
+              document.querySelectorAll('a[href*="/courses/"]').forEach(a => {
+                const m = (a.getAttribute('href') || '').match(/\/courses\/(\d+)$/);
+                if (m && !seen.has(m[1])) {
+                  seen.add(m[1]);
+                  const name = a.textContent.trim();
+                  if (name && name.length > 1) courses.push({ id: m[1], name });
+                }
+              });
+            }
+            return courses;
+          },
+        }, results => {
+          const data = results?.[0]?.result;
+          if (data?.length) finish(data);
+        });
+      }
+
+      const listener = (tabId, info) => {
+        if (tabId !== tab.id || info.status !== 'complete') return;
+        chrome.tabs.onUpdated.removeListener(listener);
+        tryExtract();
+        setTimeout(tryExtract, 1500);
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+
+      setTimeout(() => finish(null), 12000);
+    });
+  });
 }
 
 // Opens a hidden Canvas modules page tab, waits for load, scrapes assignments.
@@ -220,7 +282,11 @@ function scrapeTab(url) {
               ?? document.title.replace(/\s*[-|].*$/, '').trim()
               ?? null;
 
-            return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage };
+            // Capture page text for AI fallback when selectors miss
+            const mainEl = document.querySelector('#content') || document.querySelector('.ic-Layout-contentMain') || document.body;
+            const pageText = mainEl?.innerText?.slice(0, 8000) || '';
+
+            return { assignments, googleDocIds, courseIdFromUrl, courseNameFromPage, pageText };
           },
         }, results => {
           const data = results?.[0]?.result;
