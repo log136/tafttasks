@@ -3191,10 +3191,37 @@ async function reSyncCanvas(silent = false) {
     const events = parseICal(text);
     const freshCourses = groupICalByCourse(events);
 
+    const colors = ['#1d4ed8', '#065f46', '#7c3aed', '#b45309', '#0e7490', '#be123c'];
+
     for (const fc of freshCourses) {
-      // Find matching local course
-      const localCourse = COURSES.find(c => c.canvas_course_id === fc.canvas_course_id);
-      if (!localCourse) continue;
+      if (!fc.canvas_course_id) continue;
+
+      let localCourse = COURSES.find(c => c.canvas_course_id === fc.canvas_course_id);
+
+      // Create course if it doesn't exist yet
+      if (!localCourse) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const { data: created, error } = await sb.from('courses').insert({
+          user_id: currentUser.id,
+          name: fc.name,
+          color,
+          canvas_course_id: fc.canvas_course_id,
+        }).select().single();
+        if (error) { console.error('Course create failed:', fc.name, error); continue; }
+
+        // Create default assignment group
+        const { data: grp, error: grpErr } = await sb.from('assignment_groups').insert({
+          course_id: created.id,
+          user_id: currentUser.id,
+          label: 'Assignments',
+          sort_order: 0,
+        }).select().single();
+        if (grpErr) { console.error('Group create failed:', fc.name, grpErr); continue; }
+
+        created.groups = [{ ...grp, assignments: [] }];
+        COURSES.push(created);
+        localCourse = created;
+      }
 
       const group = localCourse.groups[0];
       if (!group?.id) continue;

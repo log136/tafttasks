@@ -75,20 +75,79 @@ async function syncFromICal() {
     // 3. Get user's courses from Supabase
     const coursesRes = await sbFetch(token, `/rest/v1/courses?user_id=eq.${userId}&select=id,canvas_course_id`);
     const localCourses = await coursesRes.json();
-    if (!Array.isArray(localCourses) || !localCourses.length) return;
+    if (!Array.isArray(localCourses)) return;
 
-    // 4. Get assignment groups for those courses
-    const courseIds = localCourses.map(c => c.id).join(',');
-    const groupsRes = await sbFetch(token, `/rest/v1/assignment_groups?course_id=in.(${courseIds})&select=id,course_id`);
-    const localGroups = await groupsRes.json();
+    // 4. Get assignment groups for existing courses
+    let localGroups = [];
+    if (localCourses.length) {
+      const courseIds = localCourses.map(c => c.id).join(',');
+      const groupsRes = await sbFetch(token, `/rest/v1/assignment_groups?course_id=in.(${courseIds})&select=id,course_id`);
+      localGroups = await groupsRes.json();
+    }
 
-    // 5. Upsert assignments course by course
+    // 5. Upsert assignments course by course, creating missing courses on the fly
+    const colors = ['#1d4ed8', '#065f46', '#7c3aed', '#b45309', '#0e7490', '#be123c'];
     let totalUpserted = 0;
     for (const fc of freshCourses) {
-      const localCourse = localCourses.find(c => c.canvas_course_id === fc.canvas_course_id);
-      if (!localCourse) continue;
-      const group = localGroups.find(g => g.course_id === localCourse.id);
-      if (!group) continue;
+      if (!fc.canvas_course_id) continue;
+
+      let localCourse = localCourses.find(c => c.canvas_course_id === fc.canvas_course_id);
+
+      // Create course if it doesn't exist yet
+      if (!localCourse) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const createRes = await fetch(`${SUPABASE_URL}/rest/v1/courses`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            name: fc.name,
+            color,
+            canvas_course_id: fc.canvas_course_id,
+          }),
+        });
+        const created = await createRes.json();
+        if (!createRes.ok || !Array.isArray(created) || !created.length) {
+          console.error('[TaftTasks] Failed to create course:', fc.name, created);
+          continue;
+        }
+        localCourse = created[0];
+        localCourses.push(localCourse);
+        console.log(`[TaftTasks] Created course: ${fc.name}`);
+      }
+
+      let group = localGroups.find(g => g.course_id === localCourse.id);
+
+      // Create default assignment group if missing
+      if (!group) {
+        const grpRes = await fetch(`${SUPABASE_URL}/rest/v1/assignment_groups`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({
+            course_id: localCourse.id,
+            user_id: userId,
+            label: 'Assignments',
+            sort_order: 0,
+          }),
+        });
+        const grpCreated = await grpRes.json();
+        if (!grpRes.ok || !Array.isArray(grpCreated) || !grpCreated.length) {
+          console.error('[TaftTasks] Failed to create group for:', fc.name, grpCreated);
+          continue;
+        }
+        group = grpCreated[0];
+        localGroups.push(group);
+      }
 
       const rows = fc.assignments
         .filter(a => a.canvasAssignmentId)
