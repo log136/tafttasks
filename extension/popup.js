@@ -39,9 +39,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (session) {
     const { data } = await sb.auth.setSession(session);
     if (data.user) {
-      // Cache iCal URL so background.js can sync without opening the app
-      const { data: settings } = await sb.from('user_settings').select('canvas_token').eq('user_id', data.user.id).single();
-      if (settings?.canvas_token) await chrome.storage.local.set({ icalUrl: settings.canvas_token });
       currentUser = data.user;
       currentSession = data.session;
     }
@@ -50,17 +47,25 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('loginBtn').addEventListener('click', doLogin);
   document.getElementById('syncAllBtn').addEventListener('click', doFullSync);
   document.getElementById('scrapeSelectedBtn').addEventListener('click', doScrapeSelected);
+  document.getElementById('refreshBtn').addEventListener('click', doRefresh);
 
   render();
 });
 
 
-function render() {
+async function render() {
   const loggedIn = !!currentUser;
   document.getElementById('loginSection').style.display = loggedIn ? 'none' : 'block';
   document.getElementById('notCanvasSection').style.display = loggedIn ? 'block' : 'none';
   if (loggedIn) {
     document.getElementById('userLine2').textContent = `✓ Signed in as ${currentUser.email}`;
+    // Show refresh button if user already has Canvas courses
+    const { data: courses } = await sb.from('courses')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .not('canvas_course_id', 'is', null)
+      .limit(1);
+    document.getElementById('refreshSection').style.display = courses?.length ? 'block' : 'none';
   }
 }
 
@@ -182,12 +187,6 @@ async function doScrapeSelected() {
   const statusEl = document.getElementById('scrapeStatus');
   btn.disabled = true;
   statusEl.className = 'status';
-
-  // Kick off iCal sync in the background (best-effort)
-  let { icalUrl } = await chrome.storage.local.get('icalUrl');
-  if (icalUrl) {
-    chrome.runtime.sendMessage({ type: 'SYNC_NOW' }).catch(() => {});
-  }
 
   try {
     let totalSaved = 0;
@@ -639,42 +638,110 @@ async function fetchDocText(docId, driveFile = false) {
   return res.text();
 }
 
-// Opens a hidden Canvas calendar tab, waits for load, extracts the iCal feed URL.
-function discoverICalUrl() {
-  return new Promise(resolve => {
-    chrome.tabs.create({ url: 'https://taftschool.instructure.com/calendar', active: false }, tab => {
-      let resolved = false;
+// ── Refresh: re-scrape all existing courses in the dashboard ──
+async function doRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  const statusEl = document.getElementById('refreshStatus');
+  btn.disabled = true;
+  statusEl.className = 'status';
+  statusEl.textContent = 'Loading your courses…';
 
-      function finish(url) {
-        if (resolved) return;
-        resolved = true;
-        chrome.tabs.remove(tab.id).catch(() => {});
-        resolve(url || null);
+  try {
+    // Get all courses with a canvas_course_id from Supabase
+    const { data: courses, error } = await sb.from('courses')
+      .select('id, name, canvas_course_id')
+      .eq('user_id', currentUser.id)
+      .not('canvas_course_id', 'is', null);
+
+    if (error) throw new Error(error.message);
+    if (!courses?.length) {
+      statusEl.textContent = 'No Canvas courses found. Use "Find Courses" first.';
+      btn.disabled = false;
+      return;
+    }
+
+    let totalSaved = 0;
+
+    for (let i = 0; i < courses.length; i++) {
+      const course = courses[i];
+      statusEl.textContent = `Scraping ${course.name} (${i + 1}/${courses.length})…`;
+
+      const base = `https://taftschool.instructure.com/courses/${course.canvas_course_id}`;
+      const [modulesData, assignmentsData] = await Promise.all([
+        scrapeTab(`${base}/modules`),
+        scrapeTab(`${base}/assignments`),
+      ]);
+      const data = mergePageData(modulesData, assignmentsData);
+      data.courseIdFromUrl = String(course.canvas_course_id);
+      data.courseNameFromPage = course.name;
+
+      for (const a of data.assignments) {
+        if (!a.canvasCourseId) a.canvasCourseId = course.canvas_course_id;
       }
 
-      function tryExtract() {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => document.querySelector('a[href*="/feeds/calendars/"]')?.href || null,
-        }, results => {
-          const url = results?.[0]?.result;
-          if (url) finish(url);
-        });
+      // Wiki page + AI fallback (same logic as doScrapeSelected)
+      if (!data.assignments.length && !data.googleDocIds.length) {
+        statusEl.textContent = `Checking ${course.name} home page…`;
+        const homeData = await scrapeTab(base);
+        const wikiLinks = (homeData?.wikiLinks || []).filter(l =>
+          /assign|syllab|homework|schedule/i.test(l.text + ' ' + l.href)
+        );
+
+        let pageText = '';
+        let wikiData = null;
+        if (wikiLinks.length > 0) {
+          const wikiUrl = wikiLinks[0].href.startsWith('http') ? wikiLinks[0].href : `https://taftschool.instructure.com${wikiLinks[0].href}`;
+          wikiData = await scrapeTab(wikiUrl);
+          pageText = wikiData?.pageText || '';
+          if (wikiData?.googleDocIds?.length) {
+            for (const doc of wikiData.googleDocIds) {
+              if (!data.googleDocIds.some(d => d.id === doc.id)) data.googleDocIds.push(doc);
+            }
+          }
+          if (wikiData?.assignments?.length) {
+            for (const a of wikiData.assignments) {
+              if (!a.canvasCourseId) a.canvasCourseId = course.canvas_course_id;
+              data.assignments.push(a);
+            }
+          }
+        }
+
+        if (!data.assignments.length && !data.googleDocIds.length) {
+          if (pageText.length < 50) {
+            pageText = modulesData?.pageText || assignmentsData?.pageText || '';
+          }
+          if (pageText.length > 50) {
+            statusEl.textContent = `AI-parsing ${course.name} (${i + 1}/${courses.length})…`;
+            try {
+              const aiAssignments = await cachedAiParse(course.canvas_course_id, pageText);
+              for (const a of aiAssignments) {
+                a.canvasCourseId = course.canvas_course_id;
+                a.canvasAssignmentId = null;
+              }
+              data.assignments = aiAssignments;
+            } catch (err) {
+              console.error('AI parse failed for', course.name, err);
+            }
+          }
+        }
       }
 
-      const listener = (tabId, info) => {
-        if (tabId !== tab.id || info.status !== 'complete') return;
-        chrome.tabs.onUpdated.removeListener(listener);
-        tryExtract();
-        // Retry once after 1.5 s in case Canvas renders the link via JS
-        setTimeout(tryExtract, 1500);
-      };
-      chrome.tabs.onUpdated.addListener(listener);
+      if (data.assignments.length || data.googleDocIds.length) {
+        const { saved } = await importFromPageData(data);
+        totalSaved += saved;
+      }
+    }
 
-      // Hard timeout after 12 s
-      setTimeout(() => finish(null), 12000);
-    });
-  });
+    statusEl.textContent = totalSaved > 0
+      ? `✓ Added ${totalSaved} new assignment${totalSaved !== 1 ? 's' : ''}.`
+      : '✓ Everything is up to date.';
+
+  } catch (err) {
+    statusEl.textContent = '✗ ' + err.message;
+    statusEl.className = 'status error';
+  }
+
+  btn.disabled = false;
 }
 
 async function aiParseDoc(docText) {

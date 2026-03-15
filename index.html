@@ -409,8 +409,6 @@
     .template-btn-title { font-weight: 700; }
     .template-btn-sub { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
     .template-status { font-size: 0.8rem; color: #1d4ed8; margin-top: 8px; min-height: 20px; }
-    .sync-canvas-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; transition: background 0.15s; white-space: nowrap; display: none; }
-    .sync-canvas-btn:hover { background: rgba(255,255,255,0.3); }
 
     /* ── Footer ── */
     .footer { text-align: center; padding: 20px 28px 32px; font-size: 0.78rem; color: var(--muted); }
@@ -634,7 +632,7 @@
           <div class="landing-feat-card">
             <div class="landing-feat-icon">📥</div>
             <div class="landing-feat-title">Auto-Import from Canvas</div>
-            <div class="landing-feat-desc">Paste your Canvas iCal URL once. All your courses and assignments sync instantly — no manual entry.</div>
+            <div class="landing-feat-desc">Use the Chrome extension to scan Canvas and import all your courses and assignments instantly.</div>
           </div>
           <div class="landing-feat-card">
             <div class="landing-feat-icon">🔴</div>
@@ -661,14 +659,14 @@
           <div class="landing-step-desc">Create an account with your Taft email address</div>
         </div>
         <div class="landing-step">
-          <div class="landing-step-num">📅</div>
-          <div class="landing-step-title">2. Import Canvas</div>
-          <div class="landing-step-desc">Paste your Canvas iCal URL — courses sync instantly</div>
+          <div class="landing-step-num">🧩</div>
+          <div class="landing-step-title">2. Add Extension</div>
+          <div class="landing-step-desc">Install the Chrome extension to import courses from Canvas</div>
         </div>
         <div class="landing-step">
-          <div class="landing-step-num">🧩</div>
-          <div class="landing-step-title">3. Add Extension</div>
-          <div class="landing-step-desc">Install the Chrome extension for one-click imports</div>
+          <div class="landing-step-num">📅</div>
+          <div class="landing-step-title">3. Sync Courses</div>
+          <div class="landing-step-desc">Click "Find Courses" in the extension to pull in your assignments</div>
         </div>
         <div class="landing-step">
           <div class="landing-step-num">✅</div>
@@ -781,32 +779,14 @@
       <p>Welcome! Connect Canvas to import your courses automatically.</p>
     </div>
 
-    <!-- Canvas Import via iCal -->
+    <!-- Chrome Extension prompt -->
     <div class="canvas-section" id="canvasConnectSection">
-      <h2>Import from Canvas Calendar Feed</h2>
+      <h2>Import from Canvas</h2>
       <p>
-        Open the <strong>Canvas Calendar</strong>, then click <strong>"Calendar Feed"</strong>
-        at the bottom-left of the page. Copy that URL and paste it below.<br>
-        <a class="canvas-token-link" href="https://taftschool.instructure.com/calendar" target="_blank">Open Canvas Calendar →</a>
+        Use the <strong>Taft Dashboard Chrome extension</strong> to automatically find and import
+        your Canvas courses and assignments.<br>
+        <a class="canvas-token-link" href="/extension.zip" download>⬇ Download Extension</a>
       </p>
-      <div class="wizard-field" style="margin-bottom:12px">
-        <label>Calendar Feed URL</label>
-        <input type="url" id="canvasIcalUrl"
-          placeholder="https://taftschool.instructure.com/feeds/calendars/user_…">
-      </div>
-      <button class="canvas-fetch-btn" id="canvasFetchBtn" onclick="fetchICalCourses()">Fetch My Courses →</button>
-    </div>
-
-    <!-- Course selection shown after fetch -->
-    <div id="canvasCourseSelectSection" style="display:none;max-width:520px;margin:0 auto 16px">
-      <div class="wizard-card" style="margin-bottom:12px">
-        <h2 style="margin-bottom:14px">Select courses to import</h2>
-        <div id="canvasCourseCheckList" style="display:flex;flex-direction:column;gap:8px"></div>
-        <div class="canvas-import-progress" id="canvasImportProgress"></div>
-        <button class="wizard-add-btn" id="canvasImportBtn" onclick="importSelectedICalCourses()" style="margin-top:8px">
-          Import Selected →
-        </button>
-      </div>
     </div>
 
     <!-- Taft Templates -->
@@ -887,7 +867,6 @@
           </div>
         </div>
         <button class="admin-btn" id="adminBtn" onclick="openAdminModal()" style="display:none" title="Admin">⚙</button>
-        <button class="sync-canvas-btn" id="syncCanvasBtn" onclick="reSyncCanvas()">↻ Sync Canvas</button>
         <button class="dark-mode-btn" id="darkModeBtn" onclick="toggleDarkMode()" title="Toggle dark mode">🌙</button>
         <button class="logout-btn" onclick="signOut()">Sign out</button>
       </div>
@@ -2605,12 +2584,6 @@ async function afterAuth() {
     renderAll();
     updateMissingCount();
     setSyncStatus('ok');
-
-    const icalUrl = await loadICalUrl();
-    if (icalUrl) document.getElementById('syncCanvasBtn').style.display = 'inline-block';
-
-    startAutoSync();
-    reSyncCanvas(true);
   }
 }
 
@@ -2697,252 +2670,6 @@ async function init() {
 }
 
 init();
-
-// ─────────────────────────────────────────────
-//  ICAL IMPORT
-// ─────────────────────────────────────────────
-let icalParsedCourses = []; // parsed course objects from iCal
-
-async function storeICalUrl(url) {
-  await sb.from('user_settings').upsert({
-    user_id: currentUser.id,
-    canvas_token: url, // reuse column to store iCal URL
-    updated_at: new Date().toISOString(),
-  });
-}
-
-async function loadICalUrl() {
-  const { data } = await sb.from('user_settings')
-    .select('canvas_token')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
-  return data?.canvas_token || null;
-}
-
-// Fetch iCal via the proxy function
-async function fetchICalText(icalUrl) {
-  const proxyUrl = `/api/ical-proxy?url=${encodeURIComponent(icalUrl)}`;
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error(await res.text());
-  return res.text();
-}
-
-// Unfold and parse iCal text into an array of VEVENT objects
-function parseICal(text) {
-  const unfolded = text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
-  const lines = unfolded.split('\n');
-  const events = [];
-  let current = null;
-  for (const line of lines) {
-    if (line === 'BEGIN:VEVENT') { current = {}; }
-    else if (line === 'END:VEVENT') { if (current) events.push(current); current = null; }
-    else if (current) {
-      const colon = line.indexOf(':');
-      if (colon === -1) continue;
-      const key = line.substring(0, colon).split(';')[0]; // strip params like TZID
-      const val = line.substring(colon + 1)
-        .replace(/\\n/g, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
-      current[key] = val;
-    }
-  }
-  return events;
-}
-
-function parseICalDate(s) {
-  if (!s) return null;
-  const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
-  const d = s.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (d) return `${d[1]}-${d[2]}-${d[3]}T23:59:00Z`;
-  return null;
-}
-
-function guessType(name) {
-  const l = name.toLowerCase();
-  if (/\b(quiz|test|exam|midterm|final|assessment)\b/.test(l)) return 'quiz';
-  if (/\b(read|reading)\b/.test(l)) return 'reading';
-  if (/\b(project|presentation|essay|paper|report)\b/.test(l)) return 'project';
-  return 'homework';
-}
-
-// Group parsed iCal events into courses
-function groupICalByCourse(events) {
-  const map = {};
-  for (const ev of events) {
-    const uid = ev['UID'] || '';
-    if (!uid.includes('assignment')) continue; // skip non-assignment events
-
-    const url = ev['URL'] || '';
-    const summary = ev['SUMMARY'] || '';
-    const location = ev['LOCATION'] || '';
-    const dtstart = ev['DTSTART'] || '';
-
-    // Extract Canvas course + assignment IDs from URL
-    const urlMatch = url.match(/\/courses\/(\d+)\/assignments\/(\d+)/);
-    const canvasCourseId = urlMatch ? parseInt(urlMatch[1]) : null;
-    const canvasAssignmentId = urlMatch ? parseInt(urlMatch[2]) : null;
-
-    // Course name: LOCATION is cleanest; fallback to [brackets] in SUMMARY
-    let courseName = location;
-    if (!courseName) {
-      const bm = summary.match(/\[([^\]]+)\]\s*$/);
-      courseName = bm ? bm[1] : 'Unknown Course';
-    }
-
-    // Assignment name: strip trailing [Course Name]
-    const name = summary.replace(/\s*\[[^\]]+\]\s*$/, '').trim() || summary;
-    const due = parseICalDate(dtstart);
-    const key = canvasCourseId || courseName;
-
-    if (!map[key]) {
-      map[key] = {
-        name: courseName,
-        canvas_course_id: canvasCourseId,
-        canvas_url: canvasCourseId
-          ? `https://taftschool.instructure.com/courses/${canvasCourseId}` : '',
-        assignments: [],
-      };
-    }
-    map[key].assignments.push({ name, due, url, canvasAssignmentId, type: guessType(name) });
-  }
-
-  // Sort each course's assignments by due date
-  return Object.values(map).map(c => ({
-    ...c,
-    assignments: c.assignments.sort((a, b) => {
-      if (!a.due) return 1; if (!b.due) return -1;
-      return new Date(a.due) - new Date(b.due);
-    }),
-  }));
-}
-
-// ── Step 1: Fetch iCal and show course selection ──
-async function fetchICalCourses() {
-  const icalUrl = document.getElementById('canvasIcalUrl').value.trim();
-  if (!icalUrl) { alert('Paste your Canvas Calendar Feed URL first.'); return; }
-  if (!icalUrl.includes('instructure.com/feeds/calendars/')) {
-    alert('That doesn\'t look like a Canvas calendar feed URL.\nIt should contain /feeds/calendars/');
-    return;
-  }
-
-  const btn = document.getElementById('canvasFetchBtn');
-  btn.textContent = 'Fetching…'; btn.disabled = true;
-
-  try {
-    const text = await fetchICalText(icalUrl);
-    const events = parseICal(text);
-    icalParsedCourses = groupICalByCourse(events);
-
-    if (!icalParsedCourses.length) {
-      alert('No assignments found in your calendar feed. Make sure Canvas Calendar has assignments visible.');
-      btn.textContent = 'Fetch My Courses →'; btn.disabled = false;
-      return;
-    }
-
-    await storeICalUrl(icalUrl);
-
-    // Render course checkboxes
-    document.getElementById('canvasCourseCheckList').innerHTML = icalParsedCourses.map((c, i) =>
-      `<label class="canvas-course-item">
-        <input type="checkbox" value="${i}" checked>
-        <span class="canvas-course-name">${c.name}</span>
-        <span class="canvas-course-count">${c.assignments.length} assignments</span>
-      </label>`
-    ).join('');
-
-    document.getElementById('canvasImportProgress').textContent = '';
-    document.getElementById('canvasCourseSelectSection').style.display = 'block';
-    document.getElementById('canvasConnectSection').style.display = 'none';
-  } catch (err) {
-    alert('Could not fetch calendar: ' + err.message);
-  }
-  btn.textContent = 'Fetch My Courses →'; btn.disabled = false;
-}
-
-// ── Step 2: Import selected courses into Supabase ──
-async function importSelectedICalCourses() {
-  const checked = [...document.querySelectorAll('#canvasCourseCheckList input:checked')];
-  if (!checked.length) { alert('Select at least one course.'); return; }
-
-  const btn = document.getElementById('canvasImportBtn');
-  btn.disabled = true;
-  const progress = document.getElementById('canvasImportProgress');
-  let successCount = 0;
-
-  for (let colorIdx = 0; colorIdx < checked.length; colorIdx++) {
-    const c = icalParsedCourses[parseInt(checked[colorIdx].value)];
-    if (!c) continue;
-
-    progress.textContent = `Importing ${c.name}…`;
-
-    const color = PRESET_COLORS[colorIdx % PRESET_COLORS.length];
-    const links = c.canvas_url ? [{ label: 'Canvas', href: c.canvas_url, primary: true }] : [];
-
-    // Plain insert — no upsert/conflict logic (avoids partial index issues)
-    const coursePayload = {
-      user_id: currentUser.id,
-      name: c.name,
-      teacher: '',
-      color,
-      canvas_url: c.canvas_url || '',
-      links,
-      sort_order: colorIdx,
-    };
-    if (c.canvas_course_id) coursePayload.canvas_course_id = c.canvas_course_id;
-
-    const { data: course, error: ce } = await sb
-      .from('courses').insert(coursePayload).select().single();
-
-    if (ce) {
-      console.error('Course insert failed:', ce);
-      progress.textContent = `⚠️ "${c.name}" failed: ${ce.message}`;
-      await new Promise(r => setTimeout(r, 2000));
-      continue;
-    }
-
-    // Create the assignments group
-    const { data: group, error: ge } = await sb.from('assignment_groups').insert({
-      course_id: course.id,
-      user_id: currentUser.id,
-      label: 'Upcoming',
-      sort_order: 0,
-    }).select().single();
-
-    if (ge) { console.error('Group insert failed:', ge); continue; }
-
-    // Insert all assignments as plain rows
-    if (c.assignments.length > 0) {
-      const rows = c.assignments.map((a, idx) => {
-        const row = {
-          group_id: group.id,
-          user_id: currentUser.id,
-          name: a.name,
-          due: a.due || null,
-          type: a.type,
-          url: a.url || '',
-          done: false,
-          sort_order: idx,
-        };
-        if (a.canvasAssignmentId) row.canvas_assignment_id = a.canvasAssignmentId;
-        return row;
-      });
-      const { error: ae } = await sb.from('assignments').insert(rows);
-      if (ae) console.error('Assignment insert failed:', ae);
-    }
-
-    progress.textContent = `✓ ${c.name} — ${c.assignments.length} assignments`;
-    successCount++;
-  }
-
-  if (successCount === 0) {
-    progress.textContent = '⚠️ Nothing saved. Open browser console (F12) to see the error.';
-    btn.disabled = false;
-    return;
-  }
-
-  progress.textContent = `✅ Imported ${successCount} course${successCount !== 1 ? 's' : ''}! Loading dashboard…`;
-  setTimeout(() => finishWizard(), 800);
-}
 
 // ─────────────────────────────────────────────
 //  TAFT TEMPLATES
@@ -3174,103 +2901,6 @@ function parseSpanishDoc(text) {
   return groups.filter(g => g.assignments.length > 0);
 }
 
-// ── Re-sync from dashboard ──
-async function reSyncCanvas(silent = false) {
-  const icalUrl = await loadICalUrl();
-  if (!icalUrl) {
-    if (!silent) alert('No calendar feed saved. Go through the setup wizard to reconnect.');
-    return;
-  }
-
-  const btn = document.getElementById('syncCanvasBtn');
-  btn.textContent = '↻ Syncing…'; btn.disabled = true;
-  setSyncStatus('syncing');
-
-  try {
-    const text = await fetchICalText(icalUrl);
-    const events = parseICal(text);
-    const freshCourses = groupICalByCourse(events);
-
-    const colors = ['#1d4ed8', '#065f46', '#7c3aed', '#b45309', '#0e7490', '#be123c'];
-
-    for (const fc of freshCourses) {
-      if (!fc.canvas_course_id) continue;
-
-      let localCourse = COURSES.find(c => c.canvas_course_id === fc.canvas_course_id);
-
-      // Create course if it doesn't exist yet
-      if (!localCourse) {
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const { data: created, error } = await sb.from('courses').insert({
-          user_id: currentUser.id,
-          name: fc.name,
-          color,
-          canvas_course_id: fc.canvas_course_id,
-        }).select().single();
-        if (error) { console.error('Course create failed:', fc.name, error); continue; }
-
-        // Create default assignment group
-        const { data: grp, error: grpErr } = await sb.from('assignment_groups').insert({
-          course_id: created.id,
-          user_id: currentUser.id,
-          label: 'Assignments',
-          sort_order: 0,
-        }).select().single();
-        if (grpErr) { console.error('Group create failed:', fc.name, grpErr); continue; }
-
-        created.groups = [{ ...grp, assignments: [] }];
-        COURSES.push(created);
-        localCourse = created;
-      }
-
-      const group = localCourse.groups[0];
-      if (!group?.id) continue;
-
-      const rows = fc.assignments
-        .filter(a => a.canvasAssignmentId)
-        .map((a, idx) => ({
-          group_id: group.id,
-          user_id: currentUser.id,
-          canvas_assignment_id: a.canvasAssignmentId,
-          name: a.name,
-          due: a.due,
-          type: a.type,
-          url: a.url,
-          done: false,
-          sort_order: idx,
-        }));
-
-      if (rows.length) {
-        await sb.from('assignments').upsert(rows, { onConflict: 'user_id,canvas_assignment_id' });
-      }
-    }
-
-    await loadUserData();
-    renderAll();
-    updateMissingCount();
-    setSyncStatus('ok');
-  } catch (err) {
-    if (!silent) alert('Sync failed: ' + err.message);
-    setSyncStatus('offline');
-  }
-
-  btn.textContent = '↻ Sync Canvas'; btn.disabled = false;
-}
-
-// ─────────────────────────────────────────────
-//  AUTO-SYNC
-// ─────────────────────────────────────────────
-let autoSyncTimer = null;
-const AUTO_SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes
-
-function startAutoSync() {
-  stopAutoSync();
-  autoSyncTimer = setInterval(() => reSyncCanvas(true), AUTO_SYNC_INTERVAL);
-}
-
-function stopAutoSync() {
-  if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
-}
 </script>
 </body>
 </html>
