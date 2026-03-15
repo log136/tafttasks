@@ -286,9 +286,13 @@
     .tag-quiz { background: var(--tag-quiz); color: var(--tag-quiz-text); }
     .tag-classwork { background: var(--tag-classwork); color: var(--tag-classwork-text); }
     .tag-overdue { background: var(--tag-overdue); color: var(--tag-overdue-text); font-weight: 700; }
-    .due-label { font-size: 0.72rem; color: var(--muted); }
+    .due-label { font-size: 0.72rem; color: var(--muted); cursor: pointer; }
+    .due-label:hover { text-decoration: underline; }
     .due-label.overdue { color: #dc2626; font-weight: 600; }
     .due-label.soon { color: #d97706; font-weight: 600; }
+    .due-add { font-size: 0.68rem; color: var(--border); cursor: pointer; padding: 1px 6px; border: 1px dashed var(--border); border-radius: 99px; white-space: nowrap; }
+    .due-add:hover { color: var(--muted); border-color: var(--muted); }
+    .due-picker { width: 0; height: 0; padding: 0; border: 0; opacity: 0; position: absolute; pointer-events: none; }
     .points-label { font-size: 0.72rem; color: var(--muted); }
     .assignment-link { font-size: 0.75rem; color: var(--muted); text-decoration: none; flex-shrink: 0; padding: 2px 4px; border-radius: 4px; }
     .assignment-link:hover { color: var(--taft-red); background: #fee2e2; }
@@ -1769,14 +1773,59 @@ function typeTag(type) {
   return `<span class="tag tag-${cls}">${label[type] || type}</span>`;
 }
 
-function dueLabel(due) {
-  if (!due) return '';
+function dueLabel(due, itemId) {
+  if (!due) {
+    if (!itemId) return '';
+    return `<span class="due-add" onclick="event.stopPropagation();openInlineDatePicker(this,'${itemId}','')">+ date</span>`;
+  }
   const d = new Date(due), now = new Date();
   const diff = (d - now) / 86400000;
   const fmt = d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
-  if (diff < 0) return `<span class="overdue-tag"><span class="tag tag-overdue">Overdue</span> <span class="due-label overdue">${fmt}</span></span>`;
-  if (diff < 3) return `<span class="due-label soon">Due ${fmt}</span>`;
-  return `<span class="due-label">Due ${fmt}</span>`;
+  const dateStr = due.slice(0, 10);
+  const clickHandler = `onclick="event.stopPropagation();openInlineDatePicker(this,'${itemId}','${dateStr}')"`;
+  if (diff < 0) return `<span class="overdue-tag"><span class="tag tag-overdue">Overdue</span> <span class="due-label overdue" ${clickHandler}>${fmt}</span></span>`;
+  if (diff < 3) return `<span class="due-label soon" ${clickHandler}>Due ${fmt}</span>`;
+  return `<span class="due-label" ${clickHandler}>Due ${fmt}</span>`;
+}
+
+function openInlineDatePicker(el, itemId, currentDate) {
+  // Remove any existing picker
+  document.querySelectorAll('.due-picker').forEach(p => p.remove());
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.className = 'due-picker';
+  input.value = currentDate;
+  el.style.position = 'relative';
+  el.appendChild(input);
+
+  input.addEventListener('change', async () => {
+    const newDate = input.value ? input.value + 'T04:59:00Z' : null;
+    input.remove();
+
+    // Update Supabase
+    const { error } = await sb.from('assignments').update({ due: newDate }).eq('id', itemId);
+    if (error) { console.error('Date update failed:', error); return; }
+
+    // Update local state
+    for (const course of COURSES) {
+      for (const group of course.groups) {
+        const item = group.items.find(i => i.id === itemId);
+        if (item) { item.due = newDate; break; }
+      }
+    }
+
+    renderAll();
+    updateMissingCount();
+    setSyncStatus('ok');
+  });
+
+  // Show native picker immediately
+  input.showPicker?.();
+  input.focus();
+
+  // Close if clicked away
+  input.addEventListener('blur', () => setTimeout(() => input.remove(), 200));
 }
 
 function renderItem(item, courseId, groupIdx, isReadOnly = false) {
@@ -1797,7 +1846,7 @@ function renderItem(item, courseId, groupIdx, isReadOnly = false) {
         <div class="assignment-name">${item.name}</div>
         <div class="assignment-meta">
           ${typeTag(item.type)}
-          ${dueLabel(item.due)}
+          ${dueLabel(item.due, isReadOnly ? null : item.id)}
           ${pts}
         </div>
         ${item.notes ? `<div class="assignment-note">${item.notes}</div>` : ''}
