@@ -2606,8 +2606,8 @@ async function afterAuth() {
     updateMissingCount();
     setSyncStatus('ok');
 
-    const token = await loadCanvasToken();
-    if (token) document.getElementById('syncCanvasBtn').style.display = 'inline-block';
+    const icalUrl = await loadICalUrl();
+    if (icalUrl) document.getElementById('syncCanvasBtn').style.display = 'inline-block';
 
     startAutoSync();
     reSyncCanvas(true);
