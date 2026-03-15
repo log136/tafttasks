@@ -607,26 +607,19 @@
     .landing-nav-signin { background: var(--taft-red); color: white; border: none; border-radius: 99px; padding: 8px 22px; font-size: 0.84rem; font-weight: 700; cursor: pointer; letter-spacing: -0.01em; transition: background 0.15s; }
     .landing-nav-signin:hover { background: var(--taft-red-light); }
 
-    .landing-hero { padding: 88px 48px 80px; max-width: 1020px; margin: 0 auto; }
+    .landing-hero { padding: 64px 48px 80px; max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 56px; }
+    .landing-hero-text { flex: 1; min-width: 0; }
+    .landing-hero-visual { flex: 1.1; min-width: 0; }
     .landing-overline { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--taft-red); margin-bottom: 20px; }
-    .landing-h1 { font-size: clamp(2.8rem, 6vw, 4.4rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.04em; color: #111; max-width: 660px; }
+    .landing-h1 { font-size: clamp(2.4rem, 5vw, 3.6rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.04em; color: #111; }
     .landing-h1 em { font-style: normal; color: var(--taft-red); }
-    .landing-hero-sub { font-size: 1.05rem; color: #6b6b6b; margin-top: 20px; max-width: 480px; line-height: 1.65; }
-    .landing-ctas { display: flex; gap: 12px; margin-top: 36px; align-items: center; flex-wrap: wrap; }
+    .landing-hero-sub { font-size: 1rem; color: #6b6b6b; margin-top: 20px; max-width: 440px; line-height: 1.65; }
+    .landing-ctas { display: flex; gap: 12px; margin-top: 32px; align-items: center; flex-wrap: wrap; }
     .landing-cta-primary { background: var(--taft-red); color: white; border: none; border-radius: 99px; padding: 14px 34px; font-size: 0.95rem; font-weight: 700; cursor: pointer; letter-spacing: -0.01em; transition: background 0.15s, transform 0.15s; }
     .landing-cta-primary:hover { background: var(--taft-red-light); transform: scale(1.02); }
     .landing-cta-secondary { background: none; color: #111; border: 1.5px solid #ddd; border-radius: 99px; padding: 13px 28px; font-size: 0.95rem; font-weight: 600; cursor: pointer; letter-spacing: -0.01em; transition: border-color 0.15s; }
     .landing-cta-secondary:hover { border-color: #999; }
-
-    .landing-mockup { max-width: 960px; margin: 0 auto; padding: 0 48px 80px; }
-    .landing-mockup-frame { border-radius: 12px; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08); }
-    .landing-mockup-bar { background: #f0f0f0; height: 32px; display: flex; align-items: center; padding: 0 14px; gap: 7px; }
-    .landing-mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .landing-mockup-dot:nth-child(1) { background: #ff5f57; }
-    .landing-mockup-dot:nth-child(2) { background: #febc2e; }
-    .landing-mockup-dot:nth-child(3) { background: #28c840; }
-    .landing-mockup-frame img { display: block; width: 100%; height: auto; }
-    @media (max-width: 720px) { .landing-mockup { padding: 0 20px 60px; } }
+    .landing-hero-img { width: 100%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 6px 20px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08); display: block; }
 
     .landing-features { background: #f7f7f7; padding: 80px 48px; }
     .landing-features-inner { max-width: 1020px; margin: 0 auto; }
@@ -634,7 +627,8 @@
     .landing-section-h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); font-weight: 800; letter-spacing: -0.03em; color: #111; line-height: 1.1; }
     .landing-feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
     .landing-feat-card { background: #fff; border-radius: 18px; padding: 26px 24px; border: 1.5px solid #e8e8e8; }
-    .landing-feat-icon { font-size: 1.5rem; margin-bottom: 14px; }
+    .landing-feat-icon { width: 36px; height: 36px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; background: #fef2f2; border-radius: 10px; }
+    .landing-feat-icon svg { width: 18px; height: 18px; stroke: var(--taft-red); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .landing-feat-title { font-size: 0.92rem; font-weight: 700; color: #111; margin-bottom: 7px; letter-spacing: -0.01em; }
     .landing-feat-desc { font-size: 0.8rem; color: #6b6b6b; line-height: 1.6; }
 
@@ -642,7 +636,8 @@
     .landing-steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 40px; position: relative; }
     .landing-steps-grid::before { content: ''; position: absolute; top: 25px; left: 50px; right: 50px; height: 1.5px; background: #e8e8e8; }
     .landing-step { display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
-    .landing-step-num { width: 50px; height: 50px; border-radius: 50%; background: #fff; border: 1.5px solid #e8e8e8; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); z-index: 1; }
+    .landing-step-num { width: 50px; height: 50px; border-radius: 50%; background: #fff; border: 1.5px solid #e8e8e8; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); z-index: 1; }
+    .landing-step-num svg { width: 20px; height: 20px; stroke: var(--taft-red); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .landing-step-title { font-size: 0.88rem; font-weight: 700; color: #111; margin-bottom: 6px; letter-spacing: -0.01em; }
     .landing-step-desc { font-size: 0.76rem; color: #6b6b6b; line-height: 1.55; max-width: 120px; }
 
@@ -652,7 +647,8 @@
     .landing-ext-links { display: flex; align-items: center; gap: 16px; margin-top: 32px; flex-wrap: wrap; }
     .landing-chrome-badge { display: inline-flex; align-items: center; gap: 13px; background: #1f1f1f; color: white; border-radius: 12px; padding: 11px 22px; text-decoration: none; transition: opacity 0.15s, transform 0.15s; flex-shrink: 0; }
     .landing-chrome-badge:hover { opacity: 0.85; transform: scale(1.02); }
-    .landing-chrome-badge-icon { font-size: 1.6rem; line-height: 1; }
+    .landing-chrome-badge-icon { line-height: 1; display: flex; align-items: center; }
+    .landing-chrome-badge-icon svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .landing-chrome-badge-text { display: flex; flex-direction: column; }
     .landing-chrome-badge-sm { font-size: 0.62rem; color: rgba(255,255,255,0.65); font-weight: 400; letter-spacing: 0.02em; }
     .landing-chrome-badge-lg { font-size: 0.9rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
@@ -668,8 +664,8 @@
     .landing-pricing-price { font-size: 2rem; font-weight: 800; color: #111; letter-spacing: -0.03em; }
     .landing-pricing-price span { font-size: 0.9rem; font-weight: 500; color: #6b6b6b; letter-spacing: 0; }
     .landing-pricing-list { list-style: none; margin: 20px 0 0; padding: 0; }
-    .landing-pricing-list li { font-size: 0.84rem; color: #444; padding: 7px 0; border-top: 1px solid #f0f0f0; display: flex; align-items: baseline; gap: 8px; }
-    .landing-pricing-list li::before { content: '✓'; color: #16a34a; font-weight: 700; flex-shrink: 0; }
+    .landing-pricing-list li { font-size: 0.84rem; color: #444; padding: 7px 0; border-top: 1px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
+    .landing-pricing-check { width: 16px; height: 16px; flex-shrink: 0; stroke: #16a34a; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
     .landing-pricing-note { font-size: 0.78rem; color: #9a9a9a; margin-top: 18px; line-height: 1.55; }
     .landing-pricing-cta { display: block; width: 100%; margin-top: 24px; background: var(--taft-red); color: white; border: none; border-radius: 99px; padding: 14px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.15s; }
     .landing-pricing-cta:hover { background: var(--taft-red-light); transform: scale(1.02); }
@@ -680,7 +676,8 @@
 
     @media (max-width: 720px) {
       .landing-nav { padding: 0 20px; }
-      .landing-hero { padding: 56px 20px 64px; }
+      .landing-hero { padding: 48px 20px 56px; flex-direction: column; gap: 36px; }
+      .landing-hero-visual { order: -1; }
       .landing-features { padding: 60px 20px; }
       .landing-steps-section { padding: 60px 20px; }
       .landing-ext-section { padding: 60px 20px; }
@@ -757,26 +754,19 @@
 
     <!-- Hero -->
     <section class="landing-hero">
-      <div class="landing-overline">Taft School &middot; 2026</div>
-      <h1 class="landing-h1">One dashboard.<br><em>Every assignment.</em></h1>
-      <p class="landing-hero-sub">TaftTasks gives you a unified view of all your assignments — pulled from Canvas automatically. Stay on top of what's due, across every course.</p>
-      <div class="landing-ctas">
-        <button class="landing-cta-primary" onclick="showScreen('authScreen')">Get Started →</button>
-        <button class="landing-cta-secondary" onclick="showScreen('authScreen')">Sign In</button>
+      <div class="landing-hero-text">
+        <div class="landing-overline">Taft School &middot; 2026</div>
+        <h1 class="landing-h1">One dashboard.<br><em>Every assignment.</em></h1>
+        <p class="landing-hero-sub">TaftTasks gives you a unified view of all your assignments — pulled from Canvas automatically. Stay on top of what's due, across every course.</p>
+        <div class="landing-ctas">
+          <button class="landing-cta-primary" onclick="showScreen('authScreen')">Get Started →</button>
+          <button class="landing-cta-secondary" onclick="showScreen('authScreen')">Sign In</button>
+        </div>
+      </div>
+      <div class="landing-hero-visual">
+        <img class="landing-hero-img" src="/brand-assets/ss4-fake.png" alt="TaftTasks dashboard showing courses, assignments, and schedule" loading="eager">
       </div>
     </section>
-
-    <!-- Dashboard Screenshot -->
-    <div class="landing-mockup">
-      <div class="landing-mockup-frame">
-        <div class="landing-mockup-bar">
-          <div class="landing-mockup-dot"></div>
-          <div class="landing-mockup-dot"></div>
-          <div class="landing-mockup-dot"></div>
-        </div>
-        <img src="/brand-assets/dashboard-screenshot.png" alt="TaftTasks dashboard showing courses, assignments, weekly view, and schedule" loading="lazy">
-      </div>
-    </div>
 
     <!-- Features -->
     <section class="landing-features">
@@ -785,17 +775,17 @@
         <h2 class="landing-section-h2">Everything you need.<br>Nothing extra.</h2>
         <div class="landing-feat-grid">
           <div class="landing-feat-card">
-            <div class="landing-feat-icon">📥</div>
+            <div class="landing-feat-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
             <div class="landing-feat-title">Auto-Import from Canvas</div>
             <div class="landing-feat-desc">Use the Chrome extension to scan Canvas and import all your courses and assignments instantly.</div>
           </div>
           <div class="landing-feat-card">
-            <div class="landing-feat-icon">🔴</div>
+            <div class="landing-feat-icon"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
             <div class="landing-feat-title">Overdue &amp; Missing Alerts</div>
             <div class="landing-feat-desc">Overdue assignments are flagged automatically. One tap shows everything you still need to hand in.</div>
           </div>
           <div class="landing-feat-card">
-            <div class="landing-feat-icon">☁️</div>
+            <div class="landing-feat-icon"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
             <div class="landing-feat-title">Cross-Device Sync</div>
             <div class="landing-feat-desc">Check off work on your laptop — it's done on your phone too. Your progress syncs instantly everywhere.</div>
           </div>
@@ -809,22 +799,22 @@
       <h2 class="landing-section-h2">Up and running<br>in two minutes.</h2>
       <div class="landing-steps-grid">
         <div class="landing-step">
-          <div class="landing-step-num">👤</div>
+          <div class="landing-step-num"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
           <div class="landing-step-title">1. Sign Up</div>
           <div class="landing-step-desc">Create an account with your Taft email address</div>
         </div>
         <div class="landing-step">
-          <div class="landing-step-num">🧩</div>
+          <div class="landing-step-num"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
           <div class="landing-step-title">2. Add Extension</div>
           <div class="landing-step-desc">Install the Chrome extension to import courses from Canvas</div>
         </div>
         <div class="landing-step">
-          <div class="landing-step-num">📅</div>
+          <div class="landing-step-num"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
           <div class="landing-step-title">3. Sync Courses</div>
           <div class="landing-step-desc">Click "Find Courses" in the extension to pull in your assignments</div>
         </div>
         <div class="landing-step">
-          <div class="landing-step-num">✅</div>
+          <div class="landing-step-num"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
           <div class="landing-step-title">4. You're done</div>
           <div class="landing-step-desc">Open your dashboard anytime, on any device</div>
         </div>
@@ -839,14 +829,14 @@
         <p class="landing-ext-desc">Open any Canvas course page and click the extension to sync all assignments instantly — no copy-pasting required.</p>
         <div class="landing-ext-links">
           <span class="landing-chrome-badge" style="opacity:0.55;cursor:default;">
-            <span class="landing-chrome-badge-icon">🌐</span>
+            <span class="landing-chrome-badge-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
             <span class="landing-chrome-badge-text">
               <span class="landing-chrome-badge-sm">Coming soon to the</span>
               <span class="landing-chrome-badge-lg">Chrome Web Store</span>
             </span>
           </span>
           <span class="landing-ext-divider">|</span>
-          <a href="/extension.zip" download class="landing-ext-zip">⬇ Download .zip</a>
+          <a href="/extension.zip" download class="landing-ext-zip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download .zip</a>
           <span class="landing-ext-divider">|</span>
           <a onclick="showScreen('installGuideScreen')" class="landing-ext-guide">View install guide →</a>
         </div>
@@ -861,11 +851,11 @@
         <div class="landing-pricing-badge">7-day free trial</div>
         <div class="landing-pricing-price">$1.99 <span>/ month</span></div>
         <ul class="landing-pricing-list">
-          <li>Full access to all features during your trial</li>
-          <li>Auto-import from Canvas via Chrome extension</li>
-          <li>Unlimited courses and assignments</li>
-          <li>Cross-device sync</li>
-          <li>Cancel anytime — no questions asked</li>
+          <li><svg class="landing-pricing-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Full access to all features during your trial</li>
+          <li><svg class="landing-pricing-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Auto-import from Canvas via Chrome extension</li>
+          <li><svg class="landing-pricing-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Unlimited courses and assignments</li>
+          <li><svg class="landing-pricing-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Cross-device sync</li>
+          <li><svg class="landing-pricing-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Cancel anytime — no questions asked</li>
         </ul>
         <p class="landing-pricing-note">Your trial lasts 7 days with full access. After that, you'll need a subscription to keep using TaftTasks. No charge until your trial ends, and you can cancel before then if it's not for you.</p>
         <button class="landing-pricing-cta" onclick="showScreen('authScreen')">Get Started for Free →</button>
