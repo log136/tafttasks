@@ -24,11 +24,17 @@
     .error { color: #dc2626; }
     .user-line { font-size: 0.72rem; color: #6b7280; margin-top: 10px; text-align: center; }
     .not-canvas { font-size: 0.85rem; color: #6b7280; padding: 8px 0 0; line-height: 1.5; }
-    #loginSection, #notCanvasSection { display: none; }
+    #loginSection, #notCanvasSection, #courseSelectSection { display: none; }
+    .course-item { display: flex; align-items: center; gap: 8px; padding: 6px 0;
+                   font-size: 0.82rem; cursor: pointer; }
+    .course-item input[type="checkbox"] { accent-color: #8B0000; width: 16px; height: 16px; flex-shrink: 0; }
+    .course-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .course-item-badge { font-size: 0.68rem; color: #6b7280; white-space: nowrap; }
+    #courseCheckList { max-height: 240px; overflow-y: auto; margin: 8px 0; }
   </style>
 </head>
 <body>
-  <h1>📚 Taft Dashboard</h1>
+  <h1>Taft Dashboard</h1>
   <p class="sub">Canvas Assignment Importer</p>
 
   <!-- Login -->
@@ -47,9 +53,17 @@
 
   <!-- Full Sync -->
   <div id="notCanvasSection" class="card">
-    <button class="btn" id="syncAllBtn">↻ Full Sync</button>
+    <button class="btn" id="syncAllBtn">Find Courses</button>
     <div class="status" id="syncAllStatus"></div>
     <div class="user-line" id="userLine2"></div>
+  </div>
+
+  <!-- Course Selection -->
+  <div id="courseSelectSection" class="card">
+    <div style="font-size:0.82rem; font-weight:600; margin-bottom:4px;">Select courses to scrape:</div>
+    <div id="courseCheckList"></div>
+    <button class="btn" id="scrapeSelectedBtn">Scrape Selected</button>
+    <div class="status" id="scrapeStatus"></div>
   </div>
 
   <script src="supabase.min.js"></script>

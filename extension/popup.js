@@ -8,6 +8,7 @@ const BASE_URL = 'https://tafttasks.pages.dev';
 let sb = null;
 let currentUser = null;
 let currentSession = null;
+let discoveredCourses = []; // populated by doFullSync, consumed by doScrapeSelected
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded', async () => {
@@ -27,9 +28,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('loginBtn').addEventListener('click', doLogin);
   document.getElementById('syncAllBtn').addEventListener('click', doFullSync);
+  document.getElementById('scrapeSelectedBtn').addEventListener('click', doScrapeSelected);
 
   render();
-  if (currentUser) doFullSync();
 });
 
 
@@ -68,15 +69,15 @@ async function doLogin() {
   doFullSync();
 }
 
-// ── Full Sync: scrape Canvas courses page, then scrape each course ──
+// ── Phase 1: Discover courses, show checkboxes ──
 async function doFullSync() {
   const btn = document.getElementById('syncAllBtn');
   const statusEl = document.getElementById('syncAllStatus');
   btn.disabled = true;
   statusEl.className = 'status';
+  document.getElementById('courseSelectSection').style.display = 'none';
 
   try {
-    // Step 1: Scrape the Canvas courses page to discover enrolled courses
     statusEl.textContent = 'Finding your Canvas courses…';
     const canvasCourses = await scrapeCanvasCourses();
 
@@ -86,17 +87,62 @@ async function doFullSync() {
       return;
     }
 
-    // Step 2: Also kick off iCal sync in the background (best-effort, non-blocking)
-    let { icalUrl } = await chrome.storage.local.get('icalUrl');
-    if (icalUrl) {
-      chrome.runtime.sendMessage({ type: 'SYNC_NOW' }).catch(() => {});
-    }
+    // Check which courses the user already has in Supabase
+    const { data: existingCourses } = await sb.from('courses')
+      .select('canvas_course_id')
+      .eq('user_id', currentUser.id)
+      .not('canvas_course_id', 'is', null);
+    const existingIds = new Set((existingCourses || []).map(c => String(c.canvas_course_id)));
 
-    // Step 3: Scrape each course's modules + assignments pages
+    // Store for Phase 2
+    discoveredCourses = canvasCourses;
+
+    // Render checkboxes
+    const listEl = document.getElementById('courseCheckList');
+    listEl.innerHTML = canvasCourses.map((c, i) => {
+      const exists = existingIds.has(String(c.id));
+      return `<label class="course-item">
+        <input type="checkbox" value="${i}" ${exists ? '' : 'checked'}>
+        <span class="course-item-name">${c.name}</span>
+        ${exists ? '<span class="course-item-badge">already added</span>' : ''}
+      </label>`;
+    }).join('');
+
+    statusEl.textContent = `Found ${canvasCourses.length} course${canvasCourses.length !== 1 ? 's' : ''}.`;
+    document.getElementById('courseSelectSection').style.display = 'block';
+    document.getElementById('scrapeStatus').textContent = '';
+
+  } catch (err) {
+    statusEl.textContent = '✗ ' + err.message;
+    statusEl.className = 'status error';
+  }
+
+  btn.disabled = false;
+}
+
+// ── Phase 2: Scrape only selected courses ──
+async function doScrapeSelected() {
+  const checked = [...document.querySelectorAll('#courseCheckList input:checked')];
+  if (!checked.length) { alert('Select at least one course.'); return; }
+
+  const btn = document.getElementById('scrapeSelectedBtn');
+  const statusEl = document.getElementById('scrapeStatus');
+  btn.disabled = true;
+  statusEl.className = 'status';
+
+  // Kick off iCal sync in the background (best-effort)
+  let { icalUrl } = await chrome.storage.local.get('icalUrl');
+  if (icalUrl) {
+    chrome.runtime.sendMessage({ type: 'SYNC_NOW' }).catch(() => {});
+  }
+
+  try {
     let totalSaved = 0;
-    for (let i = 0; i < canvasCourses.length; i++) {
-      const cc = canvasCourses[i];
-      statusEl.textContent = `Scraping ${cc.name} (${i + 1}/${canvasCourses.length})…`;
+    const selected = checked.map(cb => discoveredCourses[parseInt(cb.value)]);
+
+    for (let i = 0; i < selected.length; i++) {
+      const cc = selected[i];
+      statusEl.textContent = `Scraping ${cc.name} (${i + 1}/${selected.length})…`;
 
       const base = `https://taftschool.instructure.com/courses/${cc.id}`;
       const [modulesData, assignmentsData] = await Promise.all([
@@ -104,20 +150,18 @@ async function doFullSync() {
         scrapeTab(`${base}/assignments`),
       ]);
       const data = mergePageData(modulesData, assignmentsData);
-      // Attach course info so importFromPageData can create/find the right course
       data.courseIdFromUrl = cc.id;
       data.courseNameFromPage = cc.name;
 
-      // Ensure all assignments have the canvas course ID
       for (const a of data.assignments) {
         if (!a.canvasCourseId) a.canvasCourseId = parseInt(cc.id);
       }
 
-      // AI fallback: if selectors found few/no assignments, parse page text
+      // AI fallback: if selectors found nothing, parse page text
       if (!data.assignments.length && !data.googleDocIds.length) {
         const pageText = modulesData?.pageText || assignmentsData?.pageText || '';
         if (pageText.length > 50) {
-          statusEl.textContent = `AI-parsing ${cc.name} (${i + 1}/${canvasCourses.length})…`;
+          statusEl.textContent = `AI-parsing ${cc.name} (${i + 1}/${selected.length})…`;
           try {
             const aiAssignments = await aiParseDoc(pageText);
             for (const a of aiAssignments) {
@@ -138,8 +182,8 @@ async function doFullSync() {
     }
 
     statusEl.textContent = totalSaved > 0
-      ? `✓ All done! Imported ${totalSaved} new assignment${totalSaved !== 1 ? 's' : ''}.`
-      : '✓ All done! Everything was already up to date.';
+      ? `✓ Imported ${totalSaved} new assignment${totalSaved !== 1 ? 's' : ''}.`
+      : '✓ Everything was already up to date.';
 
   } catch (err) {
     statusEl.textContent = '✗ ' + err.message;
@@ -247,19 +291,28 @@ function scrapeTab(url) {
               const li = anchor.closest('li.context_module_item');
               const typeClass = li?.classList;
               let type = 'homework';
-              if (typeClass?.contains('quiz')) type = 'quiz';
-              else if (typeClass?.contains('discussion_topic')) type = 'classwork';
-              else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment')) type = 'reading';
+              let isAssignment = false;
+
+              if (typeClass?.contains('quiz')) { type = 'quiz'; isAssignment = true; }
+              else if (typeClass?.contains('discussion_topic')) { type = 'classwork'; isAssignment = true; }
+              else if (typeClass?.contains('wiki_page') || typeClass?.contains('attachment') || typeClass?.contains('external_url')) {
+                type = 'reading';
+                // wiki pages, files, and external links are NOT assignments unless they have a due date
+              }
 
               const dueEl = li?.querySelector('.due_date_display');
               let due = null;
               if (dueEl) {
                 const cleaned = dueEl.textContent.trim().replace(/\s+at\s+\d+:\d+\s*[ap]m/i, '');
                 const d = new Date(cleaned);
-                if (!isNaN(d)) due = d.toISOString().slice(0, 10);
+                if (!isNaN(d)) { due = d.toISOString().slice(0, 10); isAssignment = true; }
               }
 
               const idMatch = href.match(/\/courses\/(\d+)\/(?:assignments|quizzes)\/(\d+)/);
+              if (idMatch) isAssignment = true; // has an assignment or quiz URL
+
+              // Skip non-assignment items (pages, files, external links without due dates)
+              if (!isAssignment) continue;
 
               assignments.push({
                 name: anchor.textContent.trim(),
