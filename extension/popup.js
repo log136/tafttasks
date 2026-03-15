@@ -135,8 +135,8 @@ async function doFullSync() {
     }).join('');
 
     if (pastCourses.length) {
-      html += `<div class="past-courses-toggle" style="margin:8px 0 4px;font-size:0.8rem;color:#888;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.nextElementSibling.style.display==='none'?'▸ Past courses (${pastCourses.length})':'▾ Past courses (${pastCourses.length})'">▸ Past courses (${pastCourses.length})</div>`;
-      html += `<div style="display:none;opacity:0.5">`;
+      html += `<div class="past-courses-toggle" style="margin:8px 0 4px;font-size:0.8rem;color:#888;cursor:pointer;">▸ Past courses (${pastCourses.length})</div>`;
+      html += `<div class="past-courses-list" style="display:none;opacity:0.5">`;
       html += pastCourses.map((c) => {
         const i = canvasCourses.indexOf(c);
         const exists = existingIds.has(String(c.id));
@@ -149,6 +149,17 @@ async function doFullSync() {
       html += `</div>`;
     }
     listEl.innerHTML = html;
+
+    // Attach toggle listener (inline onclick blocked by extension CSP)
+    const toggleEl = listEl.querySelector('.past-courses-toggle');
+    if (toggleEl) {
+      const pastListEl = listEl.querySelector('.past-courses-list');
+      toggleEl.addEventListener('click', () => {
+        const hidden = pastListEl.style.display === 'none';
+        pastListEl.style.display = hidden ? 'block' : 'none';
+        toggleEl.textContent = hidden ? `▾ Past courses (${pastCourses.length})` : `▸ Past courses (${pastCourses.length})`;
+      });
+    }
 
     statusEl.textContent = `Found ${currentCourses.length} current course${currentCourses.length !== 1 ? 's' : ''}.`;
     document.getElementById('courseSelectSection').style.display = 'block';
@@ -289,8 +300,10 @@ function scrapeCanvasCourses() {
             const seen = new Set();
 
             // Find the "Past Enrollments" heading to split current vs past
+            // DOM: div.content--hasMarginTop > h2, followed by div.table-overflow-container > table
             const pastHeading = [...document.querySelectorAll('h2')].find(h => /past enrollments/i.test(h.textContent));
-            const pastTable = pastHeading?.nextElementSibling?.tagName === 'TABLE' ? pastHeading.nextElementSibling : null;
+            const pastWrapper = pastHeading?.parentElement?.nextElementSibling;
+            const pastTable = pastWrapper?.querySelector('table') ?? null;
             const pastRows = pastTable ? new Set(pastTable.querySelectorAll('tr')) : new Set();
 
             // All table rows with course links
