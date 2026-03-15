@@ -536,6 +536,16 @@
     .landing-cta-secondary { background: none; color: #111; border: 1.5px solid #ddd; border-radius: 99px; padding: 13px 28px; font-size: 0.95rem; font-weight: 600; cursor: pointer; letter-spacing: -0.01em; transition: border-color 0.15s; }
     .landing-cta-secondary:hover { border-color: #999; }
 
+    .landing-mockup { max-width: 960px; margin: 0 auto; padding: 0 48px 80px; }
+    .landing-mockup-frame { border-radius: 12px; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08); }
+    .landing-mockup-bar { background: #f0f0f0; height: 32px; display: flex; align-items: center; padding: 0 14px; gap: 7px; }
+    .landing-mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .landing-mockup-dot:nth-child(1) { background: #ff5f57; }
+    .landing-mockup-dot:nth-child(2) { background: #febc2e; }
+    .landing-mockup-dot:nth-child(3) { background: #28c840; }
+    .landing-mockup-frame img { display: block; width: 100%; height: auto; }
+    @media (max-width: 720px) { .landing-mockup { padding: 0 20px 60px; } }
+
     .landing-features { background: #f7f7f7; padding: 80px 48px; }
     .landing-features-inner { max-width: 1020px; margin: 0 auto; }
     .landing-section-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--taft-red); margin-bottom: 14px; }
@@ -650,6 +660,18 @@
         <button class="landing-cta-secondary" onclick="showScreen('authScreen')">Sign In</button>
       </div>
     </section>
+
+    <!-- Dashboard Screenshot -->
+    <div class="landing-mockup">
+      <div class="landing-mockup-frame">
+        <div class="landing-mockup-bar">
+          <div class="landing-mockup-dot"></div>
+          <div class="landing-mockup-dot"></div>
+          <div class="landing-mockup-dot"></div>
+        </div>
+        <img src="/brand-assets/dashboard-screenshot.png" alt="TaftTasks dashboard showing courses, assignments, weekly view, and schedule" loading="lazy">
+      </div>
+    </div>
 
     <!-- Features -->
     <section class="landing-features">
