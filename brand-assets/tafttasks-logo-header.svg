@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 48" width="420" height="48">
+  <!-- Icon: transparent bg, white tasks -->
+  <g transform="translate(2, 2)">
+    <rect width="44" height="44" rx="10" fill="rgba(255,255,255,0.2)"/>
+
+    <!-- Row 1 – checked -->
+    <rect x="9" y="10" width="7" height="7" rx="2" fill="white"/>
+    <polyline points="10.5,13.5 12.5,15.5 15.5,11" fill="none" stroke="#8B0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="12.5" width="16" height="2" rx="1" fill="white" opacity="0.5"/>
+
+    <!-- Row 2 – checked -->
+    <rect x="9" y="19" width="7" height="7" rx="2" fill="white"/>
+    <polyline points="10.5,22.5 12.5,24.5 15.5,20" fill="none" stroke="#8B0000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="21.5" width="13" height="2" rx="1" fill="white" opacity="0.5"/>
+
+    <!-- Row 3 – unchecked -->
+    <rect x="9" y="28" width="7" height="7" rx="2" fill="none" stroke="white" stroke-width="1.2"/>
+    <rect x="20" y="30.5" width="15" height="2" rx="1" fill="white" opacity="0.9"/>
+    <circle cx="38" cy="31.5" r="1.8" fill="#FF6B6B" opacity="0.9"/>
+  </g>
+
+  <!-- Wordmark: all white for red background -->
+  <text x="56" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="30" font-weight="900" letter-spacing="-1" fill="white">Taft</text>
+  <text x="118" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="30" font-weight="900" letter-spacing="-1" fill="rgba(255,255,255,0.85)">Tasks</text>
+</svg>
