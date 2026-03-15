@@ -10,6 +10,27 @@ let currentUser = null;
 let currentSession = null;
 let discoveredCourses = []; // populated by doFullSync, consumed by doScrapeSelected
 
+// Simple string hash for content-cache keying
+async function hashText(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// AI parse with content-hash cache — skips the API call if page text hasn't changed
+async function cachedAiParse(courseId, pageText) {
+  const cacheKey = `aiCache_${courseId}`;
+  const hash = await hashText(pageText);
+
+  const stored = (await chrome.storage.local.get(cacheKey))[cacheKey];
+  if (stored?.hash === hash) {
+    return stored.assignments; // page unchanged, reuse cached result
+  }
+
+  const assignments = await aiParseDoc(pageText);
+  await chrome.storage.local.set({ [cacheKey]: { hash, assignments } });
+  return assignments;
+}
+
 // ── Init ──
 window.addEventListener('DOMContentLoaded', async () => {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -157,13 +178,13 @@ async function doScrapeSelected() {
         if (!a.canvasCourseId) a.canvasCourseId = parseInt(cc.id);
       }
 
-      // AI fallback: if selectors found nothing, parse page text
+      // AI fallback: if selectors found nothing, parse page text (with content-hash cache)
       if (!data.assignments.length && !data.googleDocIds.length) {
         const pageText = modulesData?.pageText || assignmentsData?.pageText || '';
         if (pageText.length > 50) {
           statusEl.textContent = `AI-parsing ${cc.name} (${i + 1}/${selected.length})…`;
           try {
-            const aiAssignments = await aiParseDoc(pageText);
+            const aiAssignments = await cachedAiParse(cc.id, pageText);
             for (const a of aiAssignments) {
               a.canvasCourseId = parseInt(cc.id);
               a.canvasAssignmentId = null;
