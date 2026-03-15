@@ -297,6 +297,30 @@
     .assignment-link { font-size: 0.75rem; color: var(--muted); text-decoration: none; flex-shrink: 0; padding: 2px 4px; border-radius: 4px; }
     .assignment-link:hover { color: var(--taft-red); background: #fee2e2; }
     .delete-btn { font-size: 0.7rem; color: #e5e7eb; cursor: pointer; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity 0.15s; background: none; border: none; }
+
+    /* ── Mass Select Mode ── */
+    .mass-select-checkbox { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #d1d5db; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: white; flex-shrink: 0; }
+    .mass-select-checkbox:hover { border-color: var(--taft-red); }
+    .mass-select-checkbox.checked { background: var(--taft-red); border-color: var(--taft-red); }
+    .mass-select-checkbox.checked::after { content: '✓'; color: white; font-size: 11px; font-weight: 700; }
+    .mass-bar { display: none; align-items: center; gap: 10px; padding: 10px 28px; background: #1a1a2e; color: white; }
+    .mass-bar.active { display: flex; }
+    .mass-bar-count { font-size: 0.85rem; font-weight: 600; }
+    .mass-bar-actions { display: flex; gap: 8px; margin-left: auto; }
+    .mass-bar-btn { padding: 5px 14px; border-radius: 7px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s; }
+    .mass-bar-btn.danger { background: #dc2626; color: white; }
+    .mass-bar-btn.danger:hover { background: #b91c1c; }
+    .mass-bar-btn.secondary { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
+    .mass-bar-btn.secondary:hover { background: rgba(255,255,255,0.25); }
+    .mass-bar-btn.mark-done { background: #059669; color: white; }
+    .mass-bar-btn.mark-done:hover { background: #047857; }
+    [data-theme="dark"] .mass-select-checkbox { background: var(--card); border-color: #3a3d4a; }
+    [data-theme="dark"] .mass-bar { background: #111427; }
+
+    /* ── Sort Select ── */
+    .sort-select { padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.82rem; outline: none; background: white; color: var(--text); cursor: pointer; }
+    .sort-select:focus { border-color: var(--taft-red); }
+    [data-theme="dark"] .sort-select { background: #0f1117; color: var(--text); border-color: var(--border); }
     .assignment-row:hover .delete-btn { opacity: 1; color: #dc2626; }
     .edit-btn { font-size: 0.75rem; color: #e5e7eb; cursor: pointer; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity 0.15s; background: none; border: none; }
     .assignment-row:hover .edit-btn { opacity: 1; color: #9ca3af; }
@@ -930,14 +954,34 @@
     </div>
   </div>
 
+  <!-- MASS ACTION BAR -->
+  <div class="mass-bar" id="massBar">
+    <span class="mass-bar-count" id="massCount">0 selected</span>
+    <div class="mass-bar-actions">
+      <button class="mass-bar-btn mark-done" onclick="massMarkDone()">Mark Done</button>
+      <button class="mass-bar-btn danger" onclick="massDelete()">Delete</button>
+      <button class="mass-bar-btn secondary" onclick="massSelectAll()">Select All</button>
+      <button class="mass-bar-btn secondary" onclick="exitMassSelect()">Cancel</button>
+    </div>
+  </div>
+
   <!-- CONTROLS -->
-  <div class="controls">
+  <div class="controls" id="controlsBar">
     <div class="course-jump" id="courseJumps"></div>
     <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
     <button class="filter-btn" onclick="setFilter('incomplete',this)">Incomplete</button>
     <button class="filter-btn" onclick="setFilter('complete',this)">Complete</button>
     <div class="controls-right">
-      <input class="search-input" id="searchInput" placeholder="🔍  Search assignments…" oninput="applySearch(this.value)">
+      <select class="sort-select" id="sortSelect" onchange="applySort(this.value)">
+        <option value="default">Sort: Default</option>
+        <option value="due-asc">Due Date (earliest)</option>
+        <option value="due-desc">Due Date (latest)</option>
+        <option value="name-asc">Name (A-Z)</option>
+        <option value="name-desc">Name (Z-A)</option>
+        <option value="type">Type</option>
+      </select>
+      <button class="filter-btn" onclick="enterMassSelect()" id="massSelectBtn" title="Select multiple">Select</button>
+      <input class="search-input" id="searchInput" placeholder="Search assignments…" oninput="applySearch(this.value)">
     </div>
   </div>
 
@@ -1093,6 +1137,9 @@ let currentUser = null;
 let COURSES = [];
 let state = { done: {} };
 let currentFilter = 'all';
+let massSelectMode = false;
+let massSelected = new Set();
+let currentSort = 'default';
 let wizardCourses = [];
 let authMode = 'signin';
 let userSettings = {};  // populated by loadUserSettings() in afterAuth()
@@ -1837,9 +1884,13 @@ function renderItem(item, courseId, groupIdx, isReadOnly = false) {
     if (diff < 1) urgencyClass = ' urgent-red';
     else if (diff < 2) urgencyClass = ' urgent-yellow';
   }
+  const massCheckbox = massSelectMode
+    ? `<div class="mass-select-checkbox${massSelected.has(item.id) ? ' checked' : ''}" onclick="event.stopPropagation();toggleMassItem('${item.id}')"></div>`
+    : '';
   return `
-    <div class="assignment-row${isDone ? ' completed' : ''}${urgencyClass}" id="row_${item.id}">
-      <div class="checkbox-wrap">
+    <div class="assignment-row${isDone ? ' completed' : ''}${urgencyClass}" id="row_${item.id}"${massSelectMode ? ` onclick="toggleMassItem('${item.id}')"` : ''}>
+      ${massCheckbox}
+      <div class="checkbox-wrap"${massSelectMode ? ' style="display:none"' : ''}>
         <div class="custom-checkbox${isDone ? ' checked' : ''}" onclick="toggleDone('${item.id}','${courseId}')"></div>
       </div>
       <div class="assignment-info">
@@ -1852,8 +1903,8 @@ function renderItem(item, courseId, groupIdx, isReadOnly = false) {
         ${item.notes ? `<div class="assignment-note">${item.notes}</div>` : ''}
       </div>
       ${item.url ? `<a class="assignment-link" href="${item.url}" target="_blank" title="Open in Canvas">↗</a>` : ''}
-      ${isReadOnly
-        ? `<span style="font-size:0.8rem;color:var(--muted);padding:0 6px" title="Unlock to edit">🔒</span>`
+      ${isReadOnly || massSelectMode
+        ? (isReadOnly ? `<span style="font-size:0.8rem;color:var(--muted);padding:0 6px" title="Unlock to edit">🔒</span>` : '')
         : `<button class="edit-btn" onclick="openEditAssignmentModal('${item.id}','${courseId}',${groupIdx})" title="Edit">✎</button>
            <button class="delete-btn" onclick="deleteItem('${item.id}','${courseId}',${groupIdx})" title="Delete">✕</button>`
       }
@@ -2099,6 +2150,8 @@ function renderAll() {
   updateOverall();
   applyFilter();
   renderScheduleSidebar();
+  const sortEl = document.getElementById('sortSelect');
+  if (sortEl) sortEl.value = currentSort;
 }
 
 // ─────────────────────────────────────────────
@@ -2472,6 +2525,114 @@ function applyFilter(searchTerm) {
 }
 
 function applySearch(val) { applyFilter(val); }
+
+// ─────────────────────────────────────────────
+//  SORT
+// ─────────────────────────────────────────────
+function applySort(sortKey) {
+  currentSort = sortKey;
+  if (sortKey === 'default') { renderAll(); return; }
+  COURSES.forEach(course => {
+    course.groups.forEach(g => {
+      g.items.sort((a, b) => {
+        if (sortKey === 'due-asc') {
+          if (!a.due && !b.due) return 0;
+          if (!a.due) return 1;
+          if (!b.due) return -1;
+          return a.due.localeCompare(b.due);
+        }
+        if (sortKey === 'due-desc') {
+          if (!a.due && !b.due) return 0;
+          if (!a.due) return 1;
+          if (!b.due) return -1;
+          return b.due.localeCompare(a.due);
+        }
+        if (sortKey === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+        if (sortKey === 'name-desc') return (b.name || '').localeCompare(a.name || '');
+        if (sortKey === 'type') return (a.type || '').localeCompare(b.type || '');
+        return 0;
+      });
+    });
+  });
+  renderAll();
+}
+
+// ─────────────────────────────────────────────
+//  MASS SELECT
+// ─────────────────────────────────────────────
+function enterMassSelect() {
+  massSelectMode = true;
+  massSelected.clear();
+  document.getElementById('massBar').classList.add('active');
+  document.getElementById('controlsBar').style.display = 'none';
+  renderAll();
+}
+
+function exitMassSelect() {
+  massSelectMode = false;
+  massSelected.clear();
+  document.getElementById('massBar').classList.remove('active');
+  document.getElementById('controlsBar').style.display = '';
+  renderAll();
+}
+
+function toggleMassItem(id) {
+  if (massSelected.has(id)) massSelected.delete(id);
+  else massSelected.add(id);
+  const row = document.getElementById('row_' + id);
+  const cb = row?.querySelector('.mass-select-checkbox');
+  if (cb) cb.classList.toggle('checked', massSelected.has(id));
+  updateMassCount();
+}
+
+function updateMassCount() {
+  const el = document.getElementById('massCount');
+  if (el) el.textContent = `${massSelected.size} selected`;
+}
+
+function massSelectAll() {
+  const visible = document.querySelectorAll('.assignment-row:not(.hidden)');
+  if (massSelected.size === visible.length) {
+    massSelected.clear();
+  } else {
+    visible.forEach(row => {
+      const id = row.id.replace('row_', '');
+      if (id) massSelected.add(id);
+    });
+  }
+  document.querySelectorAll('.mass-select-checkbox').forEach(cb => {
+    const row = cb.closest('.assignment-row');
+    const id = row?.id.replace('row_', '');
+    cb.classList.toggle('checked', massSelected.has(id));
+  });
+  updateMassCount();
+}
+
+async function massDelete() {
+  if (massSelected.size === 0) return;
+  if (!confirm(`Delete ${massSelected.size} assignment${massSelected.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
+  setSyncStatus('syncing');
+  const ids = [...massSelected];
+  const { error } = await sb.from('assignments').delete().in('id', ids);
+  if (error) { setSyncStatus('offline'); alert('Failed to delete. Try again.'); return; }
+  COURSES.forEach(c => c.groups.forEach(g => {
+    g.items = g.items.filter(i => !massSelected.has(i.id));
+  }));
+  ids.forEach(id => delete state.done[id]);
+  setSyncStatus('ok');
+  exitMassSelect();
+}
+
+async function massMarkDone() {
+  if (massSelected.size === 0) return;
+  setSyncStatus('syncing');
+  const ids = [...massSelected];
+  const { error } = await sb.from('assignments').update({ done: true }).in('id', ids);
+  if (error) { setSyncStatus('offline'); alert('Failed to update. Try again.'); return; }
+  ids.forEach(id => { state.done[id] = true; });
+  setSyncStatus('ok');
+  exitMassSelect();
+}
 
 // ─────────────────────────────────────────────
 //  PROGRESS
