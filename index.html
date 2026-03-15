@@ -1598,8 +1598,8 @@ async function wizardAddCourse() {
   const list = document.getElementById('wizardCourseList');
   list.innerHTML = wizardCourses.map(c =>
     `<div class="wizard-list-item">
-      <div class="wizard-list-dot" style="background:${c.color}"></div>
-      <span>${c.name}</span>
+      <div class="wizard-list-dot" style="background:${escapeHtml(c.color)}"></div>
+      <span>${escapeHtml(c.name)}</span>
     </div>`
   ).join('');
 
@@ -1814,6 +1814,11 @@ async function deleteCourse(courseId) {
 // ─────────────────────────────────────────────
 //  RENDER
 // ─────────────────────────────────────────────
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function typeTag(type) {
   const label = { reading:'Reading', homework:'Homework', project:'Project', quiz:'Quiz/Test', classwork:'Classwork' };
   const cls = ['reading','homework','project','quiz','classwork'].includes(type) ? type : 'homework';
@@ -1894,15 +1899,15 @@ function renderItem(item, courseId, groupIdx, isReadOnly = false) {
         <div class="custom-checkbox${isDone ? ' checked' : ''}" onclick="toggleDone('${item.id}','${courseId}')"></div>
       </div>
       <div class="assignment-info">
-        <div class="assignment-name">${item.name}</div>
+        <div class="assignment-name">${escapeHtml(item.name)}</div>
         <div class="assignment-meta">
           ${typeTag(item.type)}
           ${dueLabel(item.due, isReadOnly ? null : item.id)}
           ${pts}
         </div>
-        ${item.notes ? `<div class="assignment-note">${item.notes}</div>` : ''}
+        ${item.notes ? `<div class="assignment-note">${escapeHtml(item.notes)}</div>` : ''}
       </div>
-      ${item.url ? `<a class="assignment-link" href="${item.url}" target="_blank" title="Open in Canvas">↗</a>` : ''}
+      ${item.url ? `<a class="assignment-link" href="${escapeHtml(item.url)}" target="_blank" title="Open in Canvas">↗</a>` : ''}
       ${isReadOnly || massSelectMode
         ? (isReadOnly ? `<span style="font-size:0.8rem;color:var(--muted);padding:0 6px" title="Unlock to edit">🔒</span>` : '')
         : `<button class="edit-btn" onclick="openEditAssignmentModal('${item.id}','${courseId}',${groupIdx})" title="Edit">✎</button>
@@ -1920,16 +1925,16 @@ function getCourseProgress(course) {
 function renderCourse(course, isReadOnly = false) {
   const { total, done } = getCourseProgress(course);
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const noteHtml = course.note ? `<div class="course-note">ℹ️ ${course.note}</div>` : '';
+  const noteHtml = course.note ? `<div class="course-note">ℹ️ ${escapeHtml(course.note)}</div>` : '';
   const linksHtml = course.links.map(l =>
-    `<a class="course-link${l.primary ? ' primary' : ''}" href="${l.href}" target="_blank">${l.label}</a>`
+    `<a class="course-link${l.primary ? ' primary' : ''}" href="${escapeHtml(l.href)}" target="_blank">${escapeHtml(l.label)}</a>`
   ).join('');
 
   let groupsHtml = '';
   course.groups.forEach((group, gi) => {
     const itemsHtml = group.items.map(item => renderItem(item, course.id, gi, isReadOnly)).join('');
     groupsHtml += `
-      <div class="group-label">${group.label}</div>
+      <div class="group-label">${escapeHtml(group.label)}</div>
       <div id="group_${course.id}_${gi}">${itemsHtml}</div>
       ${isReadOnly ? '' : `<div class="add-row">
         <button class="add-btn" data-course="${course.id}" data-group="${gi}"
@@ -1954,11 +1959,11 @@ function renderCourse(course, isReadOnly = false) {
   return `
     <div class="course-card" id="card_${course.id}">
       <div class="course-header" onclick="toggleCollapse('${course.id}')">
-        <div class="course-dot" style="background:${course.color}"></div>
-        <div class="course-title">${course.name} <span class="course-subtitle">${course.teacher}</span></div>
+        <div class="course-dot" style="background:${escapeHtml(course.color)}"></div>
+        <div class="course-title">${escapeHtml(course.name)} <span class="course-subtitle">${escapeHtml(course.teacher)}</span></div>
         <div class="course-links" onclick="event.stopPropagation()">${linksHtml}</div>
         <div class="course-progress-mini">
-          <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${course.color}"></div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${escapeHtml(course.color)}"></div></div>
           <span class="mini-count">${done}/${total}</span>
         </div>
         ${isReadOnly ? '' : `<button class="course-edit-btn" title="Edit course"
@@ -2049,10 +2054,10 @@ function renderWeekPanelBodyHtml(mon) {
     return `<div class="week-item">
       <div class="week-item-checkbox${isDone ? ' checked' : ''}"
         onclick="weekPanelToggleDone('${item.id}','${course.id}')"></div>
-      <div class="week-item-name${isDone ? ' done' : ''}">${item.name}</div>
+      <div class="week-item-name${isDone ? ' done' : ''}">${escapeHtml(item.name)}</div>
       <div class="week-item-course">
-        <div class="week-item-course-dot" style="background:${course.color}"></div>
-        ${course.name}
+        <div class="week-item-course-dot" style="background:${escapeHtml(course.color)}"></div>
+        ${escapeHtml(course.name)}
       </div>
       ${tag}
     </div>`;
@@ -2201,13 +2206,13 @@ function renderScheduleSidebar() {
           const options = [
             `<option value="" ${!courseId ? 'selected' : ''}>Free block</option>`,
             ...COURSES.map(c =>
-              `<option value="${c.id}" ${c.id === courseId ? 'selected' : ''}>${c.name}</option>`
+              `<option value="${c.id}" ${c.id === courseId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
             ),
           ].join('');
-          courseCell = `<select class="sched-select" onchange="saveBlockAssignment('${entry.block}', this.value)">${options}</select>`;
+          courseCell = `<select class="sched-select" onchange="saveBlockAssignment('${escapeHtml(entry.block)}', this.value)">${options}</select>`;
         } else {
           courseCell = courseName
-            ? `<div class="sched-block-course">${courseName}</div>`
+            ? `<div class="sched-block-course">${escapeHtml(courseName)}</div>`
             : `<div class="sched-block-free">Free block</div>`;
         }
 
@@ -2416,7 +2421,7 @@ function renderJumps() {
   const container = document.getElementById('courseJumps');
   if (!container) return;
   container.innerHTML = COURSES.map(c =>
-    `<div class="jump-dot" style="background:${c.color};border-color:${c.color}" title="${c.name}"
+    `<div class="jump-dot" style="background:${escapeHtml(c.color)};border-color:${escapeHtml(c.color)}" title="${escapeHtml(c.name)}"
       onclick="document.getElementById('card_${c.id}').scrollIntoView({behavior:'smooth',block:'start'})"></div>`
   ).join('');
 }
@@ -2705,14 +2710,14 @@ function openMissingModal() {
       : missing.map(({ course, items }) => `
           <div class="modal-course-section">
             <div class="modal-course-label">
-              <span class="modal-dot" style="background:${course.color}"></span>${course.name}
+              <span class="modal-dot" style="background:${escapeHtml(course.color)}"></span>${escapeHtml(course.name)}
             </div>
             ${items.map(item => {
               const fmt = new Date(item.due).toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' });
               return `<div class="modal-item">
                 <div class="modal-item-checkbox" onclick="toggleMissingDone('${item.id}','${course.id}')"></div>
                 <div style="flex:1">
-                  <div class="modal-item-name">${item.name}</div>
+                  <div class="modal-item-name">${escapeHtml(item.name)}</div>
                   <div class="modal-item-due">Was due ${fmt}</div>
                 </div>
               </div>`;
