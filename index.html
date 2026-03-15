@@ -45,6 +45,9 @@
     .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); padding: 20px; }
     .auth-card { background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 4px 32px rgba(0,0,0,0.1); }
     .auth-logo { text-align: center; margin-bottom: 28px; }
+    .auth-logo-dark { display: none; }
+    [data-theme="dark"] .auth-logo-light { display: none; }
+    [data-theme="dark"] .auth-logo-dark { display: inline; }
     .auth-logo h1 { font-size: 1.5rem; font-weight: 800; color: var(--taft-red); }
     .auth-logo p { color: var(--muted); font-size: 0.875rem; margin-top: 6px; }
     .auth-field { margin-bottom: 16px; }
@@ -882,7 +885,8 @@
   <div class="auth-page">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="/brand-assets/tafttasks-logo.svg" width="260" alt="TaftTasks" style="margin-bottom:8px">
+        <img src="/brand-assets/tafttasks-logo.svg" width="260" alt="TaftTasks" class="auth-logo-light" style="margin-bottom:8px">
+        <img src="/brand-assets/tafttasks-logo-dark.svg" width="260" alt="TaftTasks" class="auth-logo-dark" style="margin-bottom:8px">
         <p>Sign in to access your assignments</p>
       </div>
       <div class="auth-error" id="authError"></div>
