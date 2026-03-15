@@ -1546,7 +1546,37 @@ function showAuthError(msg) {
   el.classList.add('show');
 }
 
+let authFailCount = 0;
+let authCooldownUntil = 0;
+let authCooldownTimer = null;
+const AUTH_MAX_FAILS = 5;
+const AUTH_COOLDOWN_SECS = 30;
+
+function startAuthCooldown() {
+  authCooldownUntil = Date.now() + AUTH_COOLDOWN_SECS * 1000;
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+
+  function tick() {
+    const remaining = Math.ceil((authCooldownUntil - Date.now()) / 1000);
+    if (remaining <= 0) {
+      clearInterval(authCooldownTimer);
+      authCooldownTimer = null;
+      btn.disabled = false;
+      btn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+      showAuthError('You can try again now.');
+      return;
+    }
+    btn.textContent = `Wait ${remaining}s`;
+  }
+
+  tick();
+  authCooldownTimer = setInterval(tick, 1000);
+}
+
 async function handleAuthSubmit() {
+  if (Date.now() < authCooldownUntil) return;
+
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   if (!email || !password) { showAuthError('Email and password are required.'); return; }
@@ -1563,12 +1593,19 @@ async function handleAuthSubmit() {
   }
 
   if (result.error) {
+    authFailCount++;
+    if (authFailCount >= AUTH_MAX_FAILS) {
+      showAuthError(`Too many failed attempts. Please wait ${AUTH_COOLDOWN_SECS} seconds.`);
+      startAuthCooldown();
+      return;
+    }
     showAuthError(result.error.message);
     btn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
     btn.disabled = false;
     return;
   }
 
+  authFailCount = 0;
   currentUser = result.data.user;
   await afterAuth();
 }
