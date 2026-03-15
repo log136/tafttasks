@@ -1780,7 +1780,7 @@ function dueLabel(due, itemId) {
   }
   const d = new Date(due), now = new Date();
   const diff = (d - now) / 86400000;
-  const fmt = d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  const fmt = d.toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' });
   const dateStr = due.slice(0, 10);
   const clickHandler = `onclick="event.stopPropagation();openInlineDatePicker(this,'${itemId}','${dateStr}')"`;
   if (diff < 0) return `<span class="overdue-tag"><span class="tag tag-overdue">Overdue</span> <span class="due-label overdue" ${clickHandler}>${fmt}</span></span>`;
@@ -2547,7 +2547,7 @@ function openMissingModal() {
               <span class="modal-dot" style="background:${course.color}"></span>${course.name}
             </div>
             ${items.map(item => {
-              const fmt = new Date(item.due).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+              const fmt = new Date(item.due).toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' });
               return `<div class="modal-item">
                 <div class="modal-item-checkbox" onclick="toggleMissingDone('${item.id}','${course.id}')"></div>
                 <div style="flex:1">
