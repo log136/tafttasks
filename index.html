@@ -1392,7 +1392,6 @@ async function handleAuthSubmit() {
 }
 
 async function signOut() {
-  stopAutoSync();
   await sb.auth.signOut();
   currentUser = null; COURSES = []; state = { done: {} };
   const adminBtn = document.getElementById('adminBtn');
