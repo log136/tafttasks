@@ -137,7 +137,44 @@
     /* ── App Body (sidebar layout) ── */
     .app-body { display: flex; flex-direction: row; align-items: flex-start; gap: 0; }
     .app-body .main { flex: 1; min-width: 0; }
-    @media (max-width: 768px) { .schedule-sidebar { display: none; } }
+    /* Mobile schedule drawer */
+    .sched-mobile-toggle { display: none; }
+    .sched-drawer-overlay { display: none; }
+    @media (max-width: 768px) {
+      .schedule-sidebar {
+        display: block; position: fixed; bottom: 0; left: 0; right: 0;
+        width: 100%; height: 60vh; min-height: unset;
+        border-left: none; border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -8px 30px rgba(0,0,0,0.15);
+        z-index: 999;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        top: auto;
+      }
+      .schedule-sidebar.drawer-open { transform: translateY(0); }
+      .sched-drawer-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.35); z-index: 998;
+      }
+      .sched-drawer-overlay.visible { display: block; }
+      .sched-mobile-toggle {
+        display: flex; position: fixed; bottom: 16px; right: 16px;
+        width: 52px; height: 52px; border-radius: 50%;
+        background: #1a1a2e; color: white; border: none;
+        align-items: center; justify-content: center;
+        font-size: 1.3rem; z-index: 997;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        cursor: pointer; transition: transform 0.15s, background 0.15s;
+      }
+      .sched-mobile-toggle:active { transform: scale(0.92); }
+      .sched-drawer-handle {
+        display: block; width: 36px; height: 4px;
+        background: #d1d5db; border-radius: 2px;
+        margin: 8px auto 4px;
+      }
+    }
+    @media (min-width: 769px) { .sched-drawer-handle { display: none; } }
 
     /* ── Schedule Sidebar ── */
     .schedule-sidebar {
@@ -475,6 +512,8 @@
     [data-theme="dark"] .filter-btn:hover:not(.active) { border-color: #555; color: var(--text); }
     [data-theme="dark"] .search-input { background: #0f1117; color: var(--text); border-color: var(--border); }
     [data-theme="dark"] .schedule-sidebar { background: var(--card); border-color: var(--border); }
+    [data-theme="dark"] .sched-drawer-handle { background: #4b5563; }
+    [data-theme="dark"] .sched-mobile-toggle { background: #374151; }
     [data-theme="dark"] .sched-day-nav { background: #13161f; border-color: var(--border); }
     [data-theme="dark"] .sched-nav-arrow { background: var(--border); color: var(--text); }
     [data-theme="dark"] .sched-nav-arrow:hover { background: #3a3d4a; }
@@ -1016,8 +1055,10 @@
     <div class="main" id="mainContent">
       <div style="text-align:center;padding:80px 20px;color:#6b7280;font-size:0.92rem;">⏳ Loading your dashboard…</div>
     </div>
-    <div class="schedule-sidebar" id="scheduleSidebar"></div>
+    <div class="schedule-sidebar" id="scheduleSidebar"><div class="sched-drawer-handle"></div></div>
   </div>
+  <button class="sched-mobile-toggle" id="schedMobileToggle" onclick="toggleScheduleDrawer()">📅</button>
+  <div class="sched-drawer-overlay" id="schedDrawerOverlay" onclick="toggleScheduleDrawer()"></div>
 
   <!-- FOOTER -->
   <div class="footer">
@@ -1342,6 +1383,16 @@ const TAFT_SCHEDULE = {
 // ─────────────────────────────────────────────
 //  DARK MODE
 // ─────────────────────────────────────────────
+function toggleScheduleDrawer() {
+  const sidebar = document.getElementById('scheduleSidebar');
+  const overlay = document.getElementById('schedDrawerOverlay');
+  const isOpen = sidebar.classList.contains('drawer-open');
+  sidebar.classList.toggle('drawer-open');
+  overlay.classList.toggle('visible');
+  if (!isOpen) document.getElementById('schedMobileToggle').style.display = 'none';
+  else document.getElementById('schedMobileToggle').style.display = '';
+}
+
 function toggleDarkMode() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const next = isDark ? 'light' : 'dark';
@@ -2260,6 +2311,7 @@ function renderScheduleSidebar() {
   const editBtnClass = schedEditMode ? 'sched-edit-btn active' : 'sched-edit-btn';
 
   el.innerHTML = `
+    <div class="sched-drawer-handle"></div>
     <div class="sched-header">
       <span>📅 Schedule</span>
       <button class="${editBtnClass}" onclick="toggleSchedEditMode()" title="Edit block assignments">✏️</button>
