@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaftTasks</title>
+  <title>TaftTasks — One Dashboard, Every Assignment</title>
+  <meta name="description" content="TaftTasks gives Taft School students a unified dashboard for all their assignments — pulled from Canvas automatically. Stay on top of what's due, across every course.">
+  <meta property="og:title" content="TaftTasks — One Dashboard, Every Assignment">
+  <meta property="og:description" content="A unified assignment dashboard for Taft School. Import from Canvas, track due dates, and stay organized across every course.">
+  <meta property="og:image" content="https://tafttasks.com/brand-assets/ss4-fake.png">
+  <meta property="og:url" content="https://tafttasks.com">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TaftTasks — One Dashboard, Every Assignment">
+  <meta name="twitter:description" content="A unified assignment dashboard for Taft School. Import from Canvas, track due dates, and stay organized across every course.">
+  <meta name="twitter:image" content="https://tafttasks.com/brand-assets/ss4-fake.png">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -1269,6 +1279,8 @@
 </div><!-- #app -->
 
 <script>
+(function() {
+'use strict';
 // ─────────────────────────────────────────────
 //  SUPABASE
 // ─────────────────────────────────────────────
@@ -3395,6 +3407,72 @@ function parseSpanishDoc(text) {
   return groups.filter(g => g.assignments.length > 0);
 }
 
+// ─────────────────────────────────────────────
+//  EXPOSE FUNCTIONS REQUIRED BY HTML HANDLERS
+// ─────────────────────────────────────────────
+Object.assign(window, {
+  showScreen,
+  handleAuthSubmit,
+  toggleAuthMode,
+  signOut,
+  wizardAddCourse,
+  finishWizard,
+  importTemplate,
+  openAddCourseModal,
+  closeAddCourseModal,
+  addCourseFromDashboard,
+  openEditCourseModal,
+  closeEditCourseModal,
+  saveEditCourse,
+  openEditAssignmentModal,
+  closeEditAssignmentModal,
+  saveEditAssignment,
+  deleteCourse,
+  deleteItem,
+  toggleDone,
+  toggleMissingDone,
+  openInlineDatePicker,
+  openAddForm,
+  closeAddForm,
+  saveCustom,
+  toggleCollapse,
+  setFilter,
+  applySearch,
+  applySort,
+  enterMassSelect,
+  exitMassSelect,
+  massSelectAll,
+  massDelete,
+  massMarkDone,
+  toggleMassItem,
+  openMissingModal,
+  closeMissingModal,
+  openAdminModal,
+  closeAdminModal,
+  saveAltSaturday,
+  clearAltSaturday,
+  loadOverrideForDate,
+  adminAddEntry,
+  adminRemoveEntry,
+  adminMoveEntry,
+  adminUpdateEntry,
+  saveOverride,
+  deleteOverride,
+  selectColor,
+  toggleDarkMode,
+  schedNav,
+  saveBlockAssignment,
+  toggleSchedEditMode,
+  toggleScheduleDrawer,
+  weekPanelNavigate,
+  weekPanelSelectDay,
+  weekPanelToggleCollapse,
+  weekPanelToggleDone,
+  startCheckout,
+  openCustomerPortal,
+});
+
+})();
 </script>
 </body>
 </html>
