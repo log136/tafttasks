@@ -619,6 +619,18 @@
     .landing-ext-guide { font-size: 0.86rem; color: var(--taft-red); font-weight: 600; cursor: pointer; text-decoration: none; padding: 4px 0; border-bottom: 1.5px solid transparent; transition: border-color 0.15s; }
     .landing-ext-guide:hover { border-bottom-color: var(--taft-red); }
 
+    .landing-pricing { padding: 80px 48px; max-width: 1020px; margin: 0 auto; text-align: center; }
+    .landing-pricing-card { background: #fff; border: 1.5px solid #e8e8e8; border-radius: 18px; max-width: 480px; margin: 40px auto 0; padding: 36px 32px; text-align: left; }
+    .landing-pricing-badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; margin-bottom: 16px; }
+    .landing-pricing-price { font-size: 2rem; font-weight: 800; color: #111; letter-spacing: -0.03em; }
+    .landing-pricing-price span { font-size: 0.9rem; font-weight: 500; color: #6b6b6b; letter-spacing: 0; }
+    .landing-pricing-list { list-style: none; margin: 20px 0 0; padding: 0; }
+    .landing-pricing-list li { font-size: 0.84rem; color: #444; padding: 7px 0; border-top: 1px solid #f0f0f0; display: flex; align-items: baseline; gap: 8px; }
+    .landing-pricing-list li::before { content: '✓'; color: #16a34a; font-weight: 700; flex-shrink: 0; }
+    .landing-pricing-note { font-size: 0.78rem; color: #9a9a9a; margin-top: 18px; line-height: 1.55; }
+    .landing-pricing-cta { display: block; width: 100%; margin-top: 24px; background: var(--taft-red); color: white; border: none; border-radius: 99px; padding: 14px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.15s; }
+    .landing-pricing-cta:hover { background: var(--taft-red-light); transform: scale(1.02); }
+
     .landing-footer { border-top: 1px solid #ebebeb; padding: 22px 48px; display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: #aaa; }
     .landing-footer a { color: #aaa; text-decoration: none; transition: color 0.15s; }
     .landing-footer a:hover { color: var(--taft-red); }
@@ -633,6 +645,7 @@
       .landing-steps-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
       .landing-steps-grid::before { display: none; }
       .landing-ext-divider { display: none; }
+      .landing-pricing { padding: 60px 20px; }
       .landing-footer { padding: 20px; flex-direction: column; gap: 8px; text-align: center; }
     }
   /* Paywall banner */
@@ -772,18 +785,37 @@
         <h2 class="landing-section-h2">Import assignments<br>with one click.</h2>
         <p class="landing-ext-desc">Open any Canvas course page and click the extension to sync all assignments instantly — no copy-pasting required.</p>
         <div class="landing-ext-links">
-          <a href="#" target="_blank" class="landing-chrome-badge">
+          <span class="landing-chrome-badge" style="opacity:0.55;cursor:default;">
             <span class="landing-chrome-badge-icon">🌐</span>
             <span class="landing-chrome-badge-text">
-              <span class="landing-chrome-badge-sm">Available in the</span>
+              <span class="landing-chrome-badge-sm">Coming soon to the</span>
               <span class="landing-chrome-badge-lg">Chrome Web Store</span>
             </span>
-          </a>
+          </span>
           <span class="landing-ext-divider">|</span>
           <a href="/extension.zip" download class="landing-ext-zip">⬇ Download .zip</a>
           <span class="landing-ext-divider">|</span>
           <a onclick="showScreen('installGuideScreen')" class="landing-ext-guide">View install guide →</a>
         </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="landing-pricing">
+      <div class="landing-section-label">Pricing</div>
+      <h2 class="landing-section-h2">Try it free.<br>Keep it simple.</h2>
+      <div class="landing-pricing-card">
+        <div class="landing-pricing-badge">7-day free trial</div>
+        <div class="landing-pricing-price">$1.99 <span>/ month</span></div>
+        <ul class="landing-pricing-list">
+          <li>Full access to all features during your trial</li>
+          <li>Auto-import from Canvas via Chrome extension</li>
+          <li>Unlimited courses and assignments</li>
+          <li>Cross-device sync</li>
+          <li>Cancel anytime — no questions asked</li>
+        </ul>
+        <p class="landing-pricing-note">Your trial lasts 7 days with full access. After that, you'll need a subscription to keep using TaftTasks. No charge until your trial ends, and you can cancel before then if it's not for you.</p>
+        <button class="landing-pricing-cta" onclick="showScreen('authScreen')">Get Started for Free →</button>
       </div>
     </section>
 
