@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Taft Dashboard Importer",
-  "version": "1.0.1",
-  "description": "Import Canvas assignments into your Taft Assignment Dashboard.",
+  "name": "TaftTasks",
+  "version": "1.0.2",
+  "description": "Import Canvas assignments into TaftTasks.",
   "permissions": ["storage", "activeTab", "tabs", "scripting", "alarms"],
   "host_permissions": [
     "*://*.instructure.com/*",
