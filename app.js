@@ -1278,7 +1278,7 @@ function renderScheduleSidebar() {
   const editBtnClass = schedEditMode ? 'sched-edit-btn active' : 'sched-edit-btn';
 
   el.innerHTML = `
-    <div class="sched-drawer-handle"></div>
+    <button class="sched-drawer-handle" onclick="toggleScheduleDrawer()" aria-label="Close schedule"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <div class="sched-header">
       <span>📅 Schedule</span>
       <button class="${editBtnClass}" onclick="toggleSchedEditMode()" title="Edit block assignments">✏️</button>

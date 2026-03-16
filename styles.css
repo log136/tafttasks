@@ -198,10 +198,13 @@
       }
       .sched-mobile-toggle:active { transform: scale(0.92); }
       .sched-drawer-handle {
-        display: block; width: 36px; height: 4px;
-        background: #d1d5db; border-radius: 2px;
-        margin: 8px auto 4px;
+        display: flex; align-items: center; justify-content: center;
+        width: 100%; height: 28px;
+        background: none; border: none; cursor: pointer;
+        color: #9ca3af; transition: color 0.15s;
+        padding: 0; margin: 0;
       }
+      .sched-drawer-handle:hover { color: #555; }
     }
     @media (min-width: 769px) { .sched-drawer-handle { display: none; } }
 
@@ -541,7 +544,8 @@
     [data-theme="dark"] .filter-btn:hover:not(.active) { border-color: #555; color: var(--text); }
     [data-theme="dark"] .search-input { background: #0f1117; color: var(--text); border-color: var(--border); }
     [data-theme="dark"] .schedule-sidebar { background: var(--card); border-color: var(--border); }
-    [data-theme="dark"] .sched-drawer-handle { background: #4b5563; }
+    [data-theme="dark"] .sched-drawer-handle { color: #6b7280; }
+    [data-theme="dark"] .sched-drawer-handle:hover { color: #9ca3af; }
     [data-theme="dark"] .sched-mobile-toggle { background: #374151; }
     [data-theme="dark"] .sched-day-nav { background: #13161f; border-color: var(--border); }
     [data-theme="dark"] .sched-nav-arrow { background: var(--border); color: var(--text); }
@@ -593,6 +597,8 @@
     .landing-nav-links { display: flex; gap: 28px; align-items: center; }
     .landing-nav-links a { font-size: 0.82rem; font-weight: 600; color: #555; text-decoration: none; transition: color 0.15s; }
     .landing-nav-links a:hover { color: var(--taft-red); }
+    .landing-nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 4px; color: #555; }
+    .landing-nav-toggle svg { width: 22px; height: 22px; }
     .landing-nav-signin { background: var(--taft-red); color: white; border: none; border-radius: 99px; padding: 8px 22px; font-size: 0.84rem; font-weight: 700; cursor: pointer; letter-spacing: -0.01em; transition: background 0.15s; }
     .landing-nav-signin:hover { background: var(--taft-red-light); }
     .landing-page section[id] { scroll-margin-top: 70px; }
@@ -676,9 +682,12 @@
     .landing-footer a:hover { color: var(--taft-red); }
 
     @media (max-width: 720px) {
-      .landing-nav { padding: 0 20px; }
-      .landing-nav-links { gap: 16px; }
-      .landing-nav-links a { font-size: 0.75rem; }
+      .landing-nav { padding: 0 20px; flex-wrap: wrap; height: auto; min-height: 62px; }
+      .landing-nav-toggle { display: block; }
+      .landing-nav-links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 8px 0 16px; }
+      .landing-nav-links a { font-size: 0.88rem; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+      .landing-nav-links .landing-nav-signin { margin-top: 8px; width: 100%; text-align: center; }
+      .landing-nav.open .landing-nav-links { display: flex; }
       .landing-hero { padding: 48px 20px 56px; flex-direction: column; gap: 36px; }
       .landing-hero-visual { order: -1; }
       .landing-features { padding: 60px 20px; }
