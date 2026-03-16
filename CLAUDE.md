@@ -8,7 +8,7 @@ Taft School assignment dashboard — a multi-user web app where students aggrega
 
 ## Architecture
 
-**No build step.** The entire frontend is `index.html` — vanilla JS, HTML, and CSS in a single file. There is no `package.json`, no bundler, no framework. Supabase JS is loaded from CDN.
+**No build step.** The frontend is split into three files — `index.html` (HTML), `styles.css` (CSS), and `app.js` (JS). There is no bundler or framework. Supabase JS is loaded from CDN.
 
 **Cloudflare Pages Functions** in `functions/api/` are the only server-side code:
 - `doc-proxy.js` — CORS proxy for public Google Docs (accepts a `docId`, exports as plain text via Google's export URL)
